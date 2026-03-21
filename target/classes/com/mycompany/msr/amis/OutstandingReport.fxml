@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="600.0" prefWidth="900.0"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.OutstandingReportController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <children>
+
+        <!-- ================= TITLE ================= -->
+        <Label text="Outstanding Equipment Report"
+               layoutX="20" layoutY="20"
+               style="-fx-font-size: 18px; -fx-font-weight: bold;" />
+
+        <!-- ================= FILTER ================= -->
+        <HBox spacing="10" layoutX="20" layoutY="60">
+
+            <ComboBox fx:id="cmbPerson" promptText="Assigned To" prefWidth="180"/>
+
+            <Button text="Filter" onAction="#handleFilter"/>
+            <Button text="Refresh" onAction="#handleRefresh"/>
+            <Button text="Export" onAction="#handleExport"/>
+
+        </HBox>
+
+        <!-- ================= TABLE ================= -->
+        <TableView fx:id="tableOutstanding"
+                   layoutX="20" layoutY="110"
+                   prefWidth="860" prefHeight="450">
+
+            <columns>
+
+                <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="120"/>
+                <TableColumn fx:id="colAssignedTo" text="Assigned To" prefWidth="140"/>
+                <TableColumn fx:id="colPhone" text="Phone" prefWidth="120"/>
+                <TableColumn fx:id="colNID" text="NID" prefWidth="140"/>
+                <TableColumn fx:id="colAssignmentId" text="Assignment ID" prefWidth="120"/>
+                <TableColumn fx:id="colDate" text="Issued Date" prefWidth="140"/>
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+
+            </columns>
+
+        </TableView>
+
+    </children>
+</AnchorPane>

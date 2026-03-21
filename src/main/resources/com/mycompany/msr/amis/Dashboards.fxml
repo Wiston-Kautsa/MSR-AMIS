@@ -6,8 +6,8 @@
 <?import javafx.scene.layout.*?>
 
 <BorderPane prefHeight="700" prefWidth="1100"
-            xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.mycompany.msr.amis.DashboardsController">
 
     <stylesheets>
@@ -15,7 +15,6 @@
     </stylesheets>
 
     <!-- ================= HEADER ================= -->
-
     <top>
         <HBox alignment="CENTER_LEFT" styleClass="header">
             <padding>
@@ -23,17 +22,13 @@
             </padding>
 
             <children>
-
                 <Label text="MSR Asset Management System"
                        styleClass="header-title"/>
-
             </children>
-
         </HBox>
     </top>
 
     <!-- ================= SIDEBAR ================= -->
-
     <left>
 
         <VBox spacing="15" prefWidth="260" styleClass="sidebar">
@@ -49,24 +44,19 @@
                 <Separator/>
 
                 <!-- DASHBOARD -->
-
                 <Button text="Dashboard"
                         styleClass="sidebar-button"
                         onAction="#openDashboard"/>
 
                 <!-- MENU -->
-
                 <Accordion VBox.vgrow="ALWAYS">
 
                     <panes>
 
                         <!-- EQUIPMENT -->
-
                         <TitledPane text="Equipment Inventory">
-
                             <content>
                                 <VBox spacing="5">
-
                                     <children>
 
                                         <Button text="Add Equipment"
@@ -78,20 +68,14 @@
                                                 onAction="#openEquipmentList"/>
 
                                     </children>
-
                                 </VBox>
                             </content>
-
                         </TitledPane>
 
-
                         <!-- ASSIGNMENT -->
-
                         <TitledPane text="Equipment Issuing">
-
                             <content>
                                 <VBox spacing="5">
-
                                     <children>
 
                                         <Button text="Create Assignment"
@@ -107,20 +91,14 @@
                                                 onAction="#openAssignmentList"/>
 
                                     </children>
-
                                 </VBox>
                             </content>
-
                         </TitledPane>
 
-
                         <!-- RETURNS -->
-
                         <TitledPane text="Equipment Return">
-
                             <content>
                                 <VBox spacing="5">
-
                                     <children>
 
                                         <Button text="Return Equipment"
@@ -128,20 +106,14 @@
                                                 onAction="#openReturnEquipment"/>
 
                                     </children>
-
                                 </VBox>
                             </content>
-
                         </TitledPane>
 
-
                         <!-- REPORTS -->
-
                         <TitledPane text="Reports">
-
                             <content>
                                 <VBox spacing="5">
-
                                     <children>
 
                                         <Button text="Inventory Report"
@@ -152,15 +124,21 @@
                                                 styleClass="submenu-button"
                                                 onAction="#openAssignmentReport"/>
 
-                                        <Button text="Outstanding Equipment"
+                                        <Button text="Distribution Report"
+                                                styleClass="submenu-button"
+                                                onAction="#openDistributionReport"/>
+
+                                        <Button text="Return Report"
+                                                styleClass="submenu-button"
+                                                onAction="#openReturnReport"/>
+
+                                        <Button text="Outstanding Report"
                                                 styleClass="submenu-button"
                                                 onAction="#openOutstandingReport"/>
 
                                     </children>
-
                                 </VBox>
                             </content>
-
                         </TitledPane>
 
                     </panes>
@@ -170,7 +148,6 @@
                 <Separator/>
 
                 <!-- USERS -->
-
                 <Button text="Users"
                         styleClass="sidebar-button"
                         onAction="#openUsers"/>
@@ -178,7 +155,6 @@
                 <Separator/>
 
                 <!-- LOGOUT -->
-
                 <Button text="Logout"
                         styleClass="sidebar-button"
                         onAction="#openLogout"/>
@@ -189,9 +165,7 @@
 
     </left>
 
-
-    <!-- ================= DASHBOARD CONTENT ================= -->
-
+    <!-- ================= CONTENT ================= -->
     <center>
 
         <StackPane fx:id="contentArea">
@@ -210,94 +184,35 @@
                             <children>
 
                                 <!-- Assets Entered -->
-
-                                <VBox spacing="10"
-                                      style="-fx-background-color:white;
-                                             -fx-padding:20;
-                                             -fx-background-radius:10;
-                                             -fx-pref-width:200;
-                                             -fx-alignment:center;">
-
+                                <VBox spacing="10" styleClass="card">
                                     <children>
-
-                                        <Label text="Assets Entered"
-                                               style="-fx-font-size:14px;" />
-
-                                        <Label fx:id="lblAssetsEntered"
-                                               text="0"
-                                               style="-fx-font-size:26px; -fx-font-weight:bold;" />
-
+                                        <Label text="Assets Entered"/>
+                                        <Label fx:id="lblAssetsEntered" text="0" styleClass="card-value"/>
                                     </children>
-
                                 </VBox>
 
-
-                                <!-- Available Assets -->
-
-                                <VBox spacing="10"
-                                      style="-fx-background-color:white;
-                                             -fx-padding:20;
-                                             -fx-background-radius:10;
-                                             -fx-pref-width:200;
-                                             -fx-alignment:center;">
-
+                                <!-- Available -->
+                                <VBox spacing="10" styleClass="card">
                                     <children>
-
-                                        <Label text="Available Assets"
-                                               style="-fx-font-size:14px;" />
-
-                                        <Label fx:id="lblAvailableAssets"
-                                               text="0"
-                                               style="-fx-font-size:26px; -fx-font-weight:bold;" />
-
+                                        <Label text="Available Assets"/>
+                                        <Label fx:id="lblAvailableAssets" text="0" styleClass="card-value"/>
                                     </children>
-
                                 </VBox>
 
-
-                                <!-- Issued Assets -->
-
-                                <VBox spacing="10"
-                                      style="-fx-background-color:white;
-                                             -fx-padding:20;
-                                             -fx-background-radius:10;
-                                             -fx-pref-width:200;
-                                             -fx-alignment:center;">
-
+                                <!-- Issued -->
+                                <VBox spacing="10" styleClass="card">
                                     <children>
-
-                                        <Label text="Issued Assets"
-                                               style="-fx-font-size:14px;" />
-
-                                        <Label fx:id="lblIssuedAssets"
-                                               text="0"
-                                               style="-fx-font-size:26px; -fx-font-weight:bold;" />
-
+                                        <Label text="Issued Assets"/>
+                                        <Label fx:id="lblIssuedAssets" text="0" styleClass="card-value"/>
                                     </children>
-
                                 </VBox>
 
-
-                                <!-- Waiting Return -->
-
-                                <VBox spacing="10"
-                                      style="-fx-background-color:white;
-                                             -fx-padding:20;
-                                             -fx-background-radius:10;
-                                             -fx-pref-width:200;
-                                             -fx-alignment:center;">
-
+                                <!-- Waiting -->
+                                <VBox spacing="10" styleClass="card">
                                     <children>
-
-                                        <Label text="Waiting Return"
-                                               style="-fx-font-size:14px;" />
-
-                                        <Label fx:id="lblWaitingReturn"
-                                               text="0"
-                                               style="-fx-font-size:26px; -fx-font-weight:bold;" />
-
+                                        <Label text="Waiting Return"/>
+                                        <Label fx:id="lblWaitingReturn" text="0" styleClass="card-value"/>
                                     </children>
-
                                 </VBox>
 
                             </children>

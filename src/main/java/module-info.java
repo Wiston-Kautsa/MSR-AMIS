@@ -10,6 +10,7 @@ module com.mycompany.msr.amis {
 
     // JFoenix
     requires com.jfoenix;
+    requires java.base;
 
     opens com.mycompany.msr.amis to javafx.fxml;
 

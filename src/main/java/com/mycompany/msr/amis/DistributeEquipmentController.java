@@ -6,8 +6,6 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.Cell;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -17,6 +15,10 @@ import java.io.FileInputStream;
 import java.net.URL;
 import java.time.LocalDate;
 import java.util.*;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.CellType;
 
 public class DistributeEquipmentController implements Initializable {
 
@@ -40,6 +42,7 @@ public class DistributeEquipmentController implements Initializable {
     @FXML private Button btnSave;
     @FXML private Button btnAdd;
 
+
     // ================= DATA =================
     private ObservableList<Distribution> stagedData = FXCollections.observableArrayList();
     private Map<String, Assignment> assignmentMap = new HashMap<>();
@@ -49,15 +52,7 @@ public class DistributeEquipmentController implements Initializable {
     private Assignment selectedAssignment = null;
     private File selectedFile;
     @FXML
-    private TableView<?> equipmentTable;
-    @FXML
-    private TableColumn<?, ?> colAssetCode;
-    @FXML
-    private TableColumn<?, ?> colSerial;
-    @FXML
-    private TableColumn<?, ?> colCategory;
-    @FXML
-    private ComboBox<?> cmbAssetSelect;
+    private Button btnClear;
 
     // ================= INIT =================
     @Override
@@ -71,7 +66,6 @@ public class DistributeEquipmentController implements Initializable {
 
     // ================= TABLE =================
     private void setupTable() {
-
         colDistAsset.setCellValueFactory(cell -> cell.getValue().assetCodeProperty());
         colDistName.setCellValueFactory(cell -> cell.getValue().assignedToProperty());
         colDistPhone.setCellValueFactory(cell -> cell.getValue().phoneProperty());
@@ -82,7 +76,6 @@ public class DistributeEquipmentController implements Initializable {
 
     // ================= LOAD ASSIGNMENTS =================
     private void loadAssignments() {
-
         cmbAssignments.getItems().clear();
         assignmentMap.clear();
 
@@ -96,9 +89,7 @@ public class DistributeEquipmentController implements Initializable {
     }
 
     // ================= LOAD DETAILS =================
-    @FXML
     private void loadAssignmentDetails() {
-
         selectedAssignment = assignmentMap.get(cmbAssignments.getValue());
         if (selectedAssignment == null) return;
 
@@ -133,7 +124,6 @@ public class DistributeEquipmentController implements Initializable {
             return;
         }
 
-        // Generate unique placeholder asset
         String assetCode = "MANUAL-" + (stagedData.size() + 1);
 
         stagedData.add(new Distribution(
@@ -192,7 +182,6 @@ public class DistributeEquipmentController implements Initializable {
 
             Sheet sheet = wb.getSheetAt(0);
 
-            // Validate structure
             if (sheet.getRow(0).getLastCellNum() < 5) {
                 showError("Invalid Excel format (need 5 columns)");
                 return;
@@ -208,7 +197,6 @@ public class DistributeEquipmentController implements Initializable {
 
                 String asset = getCell(r, 0);
 
-                // prevent duplicates
                 if (usedAssets.contains(asset)) continue;
 
                 stagedData.add(new Distribution(
@@ -233,7 +221,7 @@ public class DistributeEquipmentController implements Initializable {
 
     // ================= SAVE =================
     @FXML
-    private void saveEntries(ActionEvent event) {
+    private void saveEquipment(ActionEvent event) {
 
         if (selectedAssignment == null) {
             showError("Select assignment first");
@@ -245,7 +233,7 @@ public class DistributeEquipmentController implements Initializable {
             return;
         }
 
-        // TODO: Save to DB + update equipment status
+        // TODO: Save to DB
         showInfo("Saved successfully (implement DB next)");
     }
 
@@ -293,4 +281,11 @@ public class DistributeEquipmentController implements Initializable {
     private void showError(String msg) {
         new Alert(Alert.AlertType.ERROR, msg).showAndWait();
     }
+    
+    @FXML
+private void clearForm() {
+    txtName.clear();
+    txtPhone.clear();
+    txtNid.clear();
+}
 }

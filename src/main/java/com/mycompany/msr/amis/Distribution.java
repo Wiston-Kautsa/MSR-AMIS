@@ -15,6 +15,10 @@ public class Distribution {
     private final StringProperty nid;
     private final ObjectProperty<LocalDate> distributionDate;
 
+    // ✅ ADDED (missing)
+    private final StringProperty assignmentId;
+    private final StringProperty status;
+
     // ================= DATE FORMAT =================
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -43,10 +47,13 @@ public class Distribution {
         this.distributionDate = new SimpleObjectProperty<>(
                 distributionDate != null ? distributionDate : LocalDate.now()
         );
+
+        // ✅ initialize added fields
+        this.assignmentId = new SimpleStringProperty("");
+        this.status = new SimpleStringProperty("ACTIVE");
     }
 
     // ================= SIMPLIFIED CONSTRUCTOR =================
-    // Use this for Excel/manual entry
     public Distribution(
             String assetCode,
             String serialNumber,
@@ -77,6 +84,14 @@ public class Distribution {
 
     public LocalDate getDistributionDate() { return distributionDate.get(); }
 
+    // ================= ADDED GETTERS =================
+    public String getAssignmentId() { return assignmentId.get(); }
+
+    public String getStatus() { return status.get(); }
+
+    // controller expects this name
+    public String getDate() { return getFormattedDate(); }
+
     // ================= FORMATTED DATE =================
     public String getFormattedDate() {
         return getDistributionDate().format(FORMATTER);
@@ -99,6 +114,11 @@ public class Distribution {
         distributionDate.set(value != null ? value : LocalDate.now());
     }
 
+    // ================= ADDED SETTERS =================
+    public void setAssignmentId(String value) { assignmentId.set(safe(value)); }
+
+    public void setStatus(String value) { status.set(safe(value)); }
+
     // ================= PROPERTIES =================
     public IntegerProperty idProperty() { return id; }
 
@@ -114,6 +134,11 @@ public class Distribution {
 
     public ObjectProperty<LocalDate> distributionDateProperty() { return distributionDate; }
 
+    // ================= ADDED PROPERTY METHODS =================
+    public StringProperty assignmentIdProperty() { return assignmentId; }
+
+    public StringProperty statusProperty() { return status; }
+
     // ================= DEBUG =================
     @Override
     public String toString() {
@@ -124,6 +149,8 @@ public class Distribution {
                 ", assignedTo='" + getAssignedTo() + '\'' +
                 ", phone='" + getPhone() + '\'' +
                 ", nid='" + getNid() + '\'' +
+                ", assignmentId='" + getAssignmentId() + '\'' +
+                ", status='" + getStatus() + '\'' +
                 ", date=" + getFormattedDate() +
                 '}';
     }

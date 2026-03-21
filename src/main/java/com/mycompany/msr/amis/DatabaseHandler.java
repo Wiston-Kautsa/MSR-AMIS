@@ -7,85 +7,117 @@ import java.util.List;
 public class DatabaseHandler {
 
     // ================= DATABASE =================
-    private static final String URL = "jdbc:sqlite:amis.db";
+    private static final String URL = "jdbc:sqlite:msr_amis.db";
 
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL);
     }
 
     // ================= INIT DATABASE =================
-public static void initializeDatabase() {
+    public static void initializeDatabase() {
 
-    try (Connection conn = getConnection();
-         Statement stmt = conn.createStatement()) {
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement()) {
 
-        // Equipment table
-        stmt.execute(
-                "CREATE TABLE IF NOT EXISTS equipment (" +
-                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        "name TEXT, " +
-                        "category TEXT, " +
-                        "serial_number TEXT UNIQUE, " +
-                        "condition TEXT, " +
-                        "source TEXT, " +
-                        "entry_date TEXT" +
-                ")"
-        );
+            // ================= EQUIPMENT =================
+            stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS equipment (" +
+                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                            "asset_code TEXT UNIQUE, " +
+                            "name TEXT, " +
+                            "category TEXT, " +
+                            "serial_number TEXT UNIQUE, " +
+                            "condition TEXT, " +
+                            "source TEXT, " +
+                            "entry_date TEXT, " +
+                            "status TEXT DEFAULT 'AVAILABLE'" +
+                    ")"
+            );
 
-        // Assignment table
-        stmt.execute(
-                "CREATE TABLE IF NOT EXISTS assignments (" +
-                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        "person TEXT, " +
-                        "department TEXT, " +
-                        "equipment_type TEXT, " +
-                        "quantity INTEGER, " +
-                        "date TEXT" +
-                ")"
-        );
+            // ================= ASSIGNMENTS =================
+            stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS assignments (" +
+                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                            "person TEXT, " +
+                            "department TEXT, " +
+                            "equipment_type TEXT, " +
+                            "quantity INTEGER, " +
+                            "date TEXT" +
+                    ")"
+            );
 
-    } catch (Exception e) {
-        e.printStackTrace();
+            // ================= DISTRIBUTION =================
+            stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS distribution (" +
+                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                            "asset_code TEXT, " +
+                            "assignment_id INTEGER, " +
+                            "assigned_to TEXT, " +
+                            "phone TEXT, " +
+                            "nid TEXT, " +
+                            "issued_date TEXT, " +
+                            "returned INTEGER DEFAULT 0" +
+                    ")"
+            );
+
+            // ================= RETURNS =================
+            stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS returns (" +
+                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                            "asset_code TEXT, " +
+                            "assignment_id INTEGER, " +
+                            "returned_by TEXT, " +
+                            "phone TEXT, " +
+                            "nid TEXT, " +
+                            "condition TEXT, " +
+                            "remarks TEXT, " +
+                            "return_date TEXT" +
+                    ")"
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
-}
 
     // ================= INSERT ASSIGNMENT =================
-public static void insertAssignment(String person, String dept, String type, int qty) throws Exception {
+    public static void insertAssignment(String person, String dept, String type, int qty) throws Exception {
 
-    String sql = "INSERT INTO assignments (person, department, equipment_type, quantity, date) " +
-                 "VALUES (?, ?, ?, ?, DATE('now'))";
+        String sql = "INSERT INTO assignments (person, department, equipment_type, quantity, date) " +
+                     "VALUES (?, ?, ?, ?, DATE('now'))";
 
-    try (Connection conn = getConnection();
-         PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        ps.setString(1, person);
-        ps.setString(2, dept);
-        ps.setString(3, type);
-        ps.setInt(4, qty);
+            ps.setString(1, person);
+            ps.setString(2, dept);
+            ps.setString(3, type);
+            ps.setInt(4, qty);
 
-        ps.executeUpdate();
+            ps.executeUpdate();
+        }
     }
-}
 
     // ================= UPDATE ASSIGNMENT =================
-public static void updateAssignment(int id, String person, String dept, String type, int qty) throws Exception {
+    public static void updateAssignment(int id, String person, String dept, String type, int qty) throws Exception {
 
-    String sql = "UPDATE assignments " +
-                 "SET person=?, department=?, equipment_type=?, quantity=? " +
-                 "WHERE id=?";
+        String sql = "UPDATE assignments " +
+                     "SET person=?, department=?, equipment_type=?, quantity=? " +
+                     "WHERE id=?";
 
-    try (Connection conn = getConnection();
-         PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        ps.setString(1, person);
-        ps.setString(2, dept);
-        ps.setString(3, type);
-        ps.setInt(4, qty);
-        ps.setInt(5, id);
+            ps.setString(1, person);
+            ps.setString(2, dept);
+            ps.setString(3, type);
+            ps.setInt(4, qty);
+            ps.setInt(5, id);
 
-        ps.executeUpdate();
+            ps.executeUpdate();
+        }
     }
-}
+
     // ================= DELETE ASSIGNMENT =================
     public static void deleteAssignment(int id) throws Exception {
 
@@ -133,7 +165,7 @@ public static void updateAssignment(int id, String person, String dept, String t
 
     // ================= LOCK CHECK =================
     public static boolean isAssignmentLocked(int id) {
-        // Not implemented yet (no distribution module)
+        // You can later check distribution table
         return false;
     }
 
@@ -157,8 +189,12 @@ public static void updateAssignment(int id, String person, String dept, String t
                 }
             }
 
-            // Assigned quantity
-            String assignedSql = "SELECT COALESCE(SUM(quantity),0) FROM assignments WHERE equipment_type=?";
+            // Assigned (real issued items)
+            String assignedSql =
+                    "SELECT COUNT(*) FROM distribution d " +
+                    "JOIN assignments a ON d.assignment_id = a.id " +
+                    "WHERE a.equipment_type=? AND d.returned=0";
+
             try (PreparedStatement ps = conn.prepareStatement(assignedSql)) {
 
                 ps.setString(1, type);
@@ -177,25 +213,29 @@ public static void updateAssignment(int id, String person, String dept, String t
     }
 
     // ================= ADD EQUIPMENT =================
-public static void insertEquipment(String name, String category, String serial,
-                                   String condition, String source, String date) throws Exception {
+    public static void insertEquipment(String name, String category, String serial,
+                                       String condition, String source, String date) throws Exception {
 
-    String sql = "INSERT INTO equipment (name, category, serial_number, condition, source, entry_date) " +
-                 "VALUES (?, ?, ?, ?, ?, ?)";
+        String assetCode = "AST-" + System.currentTimeMillis();
 
-    try (Connection conn = getConnection();
-         PreparedStatement ps = conn.prepareStatement(sql)) {
+        String sql = "INSERT INTO equipment (asset_code, name, category, serial_number, condition, source, entry_date, status) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        ps.setString(1, name);
-        ps.setString(2, category);
-        ps.setString(3, serial);
-        ps.setString(4, condition);
-        ps.setString(5, source);
-        ps.setString(6, date);
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        ps.executeUpdate();
+            ps.setString(1, assetCode);
+            ps.setString(2, name);
+            ps.setString(3, category);
+            ps.setString(4, serial);
+            ps.setString(5, condition);
+            ps.setString(6, source);
+            ps.setString(7, date);
+            ps.setString(8, "AVAILABLE");
+
+            ps.executeUpdate();
+        }
     }
-}
 
     // ================= CHECK SERIAL =================
     public static boolean serialExists(String serial) {
@@ -218,36 +258,92 @@ public static void insertEquipment(String name, String category, String serial,
 
         return false;
     }
-public static List<Assignment> getAssignmentEntries(int assignmentId) {
 
-    List<Assignment> list = new ArrayList<>();
+    // ================= GET ASSIGNMENT ENTRY =================
+    public static List<Assignment> getAssignmentEntries(int assignmentId) {
 
-    String sql = "SELECT * FROM assignments WHERE id=?";
+        List<Assignment> list = new ArrayList<>();
 
-    try (Connection conn = getConnection();
-         PreparedStatement ps = conn.prepareStatement(sql)) {
+        String sql = "SELECT * FROM assignments WHERE id=?";
 
-        ps.setInt(1, assignmentId);
-        ResultSet rs = ps.executeQuery();
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        while (rs.next()) {
+            ps.setInt(1, assignmentId);
+            ResultSet rs = ps.executeQuery();
 
-            Assignment a = new Assignment(
-                    rs.getInt("id"),
-                    rs.getString("person"),
-                    rs.getString("department"),
-                    rs.getString("equipment_type"),
-                    rs.getInt("quantity"),
-                    rs.getString("date")
-            );
+            while (rs.next()) {
 
-            list.add(a);
+                Assignment a = new Assignment(
+                        rs.getInt("id"),
+                        rs.getString("person"),
+                        rs.getString("department"),
+                        rs.getString("equipment_type"),
+                        rs.getInt("quantity"),
+                        rs.getString("date")
+                );
+
+                list.add(a);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
-    } catch (Exception e) {
-        e.printStackTrace();
+        return list;
     }
 
-    return list;
-}    
+    // ================= RETURN EQUIPMENT =================
+    public static void returnEquipment(String assetCode, String returnedBy,
+                                       String phone, String nid,
+                                       String condition, String remarks) throws Exception {
+
+        try (Connection conn = getConnection()) {
+
+            conn.setAutoCommit(false);
+
+            // Insert return record
+            String insertReturn =
+                    "INSERT INTO returns (asset_code, returned_by, phone, nid, condition, remarks, return_date) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, DATE('now'))";
+
+            try (PreparedStatement ps = conn.prepareStatement(insertReturn)) {
+
+                ps.setString(1, assetCode);
+                ps.setString(2, returnedBy);
+                ps.setString(3, phone);
+                ps.setString(4, nid);
+                ps.setString(5, condition);
+                ps.setString(6, remarks);
+
+                ps.executeUpdate();
+            }
+
+            // Update equipment
+            String updateEquipment =
+                    "UPDATE equipment SET status='AVAILABLE' WHERE asset_code=?";
+
+            try (PreparedStatement ps = conn.prepareStatement(updateEquipment)) {
+
+                ps.setString(1, assetCode);
+                ps.executeUpdate();
+            }
+
+            // Update distribution
+            String updateDistribution =
+                    "UPDATE distribution SET returned=1 WHERE asset_code=?";
+
+            try (PreparedStatement ps = conn.prepareStatement(updateDistribution)) {
+
+                ps.setString(1, assetCode);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
 }

@@ -6,6 +6,15 @@ import java.time.format.DateTimeFormatter;
 
 public class Equipment {
 
+    // ================= ENUMS =================
+    public enum Status {
+        AVAILABLE, ASSIGNED, MAINTENANCE, RETIRED
+    }
+
+    public enum Condition {
+        NEW, GOOD, FAIR, POOR
+    }
+
     // ================= PROPERTIES =================
     private final IntegerProperty id;
     private final StringProperty assetCode;
@@ -49,7 +58,7 @@ public class Equipment {
                      String condition, String entryDate) {
 
         this(0,
-             generateAssetCode(),   // auto asset code
+             generateAssetCode(),
              serialNumber,
              name,
              category,

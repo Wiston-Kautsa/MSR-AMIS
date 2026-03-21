@@ -13,6 +13,10 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
 public class DashboardsController implements Initializable {
 
     @FXML
@@ -34,21 +38,79 @@ public class DashboardsController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
 
         if (lblAssetsEntered != null) {
-            lblAssetsEntered.setText("0");
+            lblAssetsEntered.setText(String.valueOf(getTotalAssets()));
         }
 
         if (lblAvailableAssets != null) {
-            lblAvailableAssets.setText("0");
+            lblAvailableAssets.setText(String.valueOf(getAvailableAssets()));
         }
 
         if (lblIssuedAssets != null) {
-            lblIssuedAssets.setText("0");
+            lblIssuedAssets.setText(String.valueOf(getIssuedAssets()));
         }
 
         if (lblWaitingReturn != null) {
-            lblWaitingReturn.setText("0");
+            lblWaitingReturn.setText(String.valueOf(getWaitingReturn()));
         }
 
+    }
+
+    /* ================= DATABASE METHODS ================= */
+
+    private int getTotalAssets() {
+        String sql = "SELECT COUNT(*) FROM equipment";
+        try (Connection conn = DatabaseHandler.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    private int getAvailableAssets() {
+        String sql = "SELECT COUNT(*) FROM equipment WHERE status='AVAILABLE'";
+        try (Connection conn = DatabaseHandler.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    private int getIssuedAssets() {
+        String sql = "SELECT COUNT(*) FROM distribution WHERE returned=0";
+        try (Connection conn = DatabaseHandler.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    private int getWaitingReturn() {
+        String sql = "SELECT COUNT(*) FROM distribution WHERE returned=0";
+        try (Connection conn = DatabaseHandler.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     /* ================= PAGE LOADER ================= */
@@ -86,22 +148,7 @@ public class DashboardsController implements Initializable {
 
     @FXML
     private void openDashboard(ActionEvent event) {
-
-        try {
-
-            Parent root = FXMLLoader.load(
-                    getClass().getResource("Dashboards.fxml")
-            );
-
-            javafx.stage.Stage stage =
-                    (javafx.stage.Stage) contentArea.getScene().getWindow();
-
-            stage.getScene().setRoot(root);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
+        contentArea.getChildren().clear();
     }
 
     /* ================= EQUIPMENT ================= */
@@ -153,6 +200,16 @@ public class DashboardsController implements Initializable {
     }
 
     @FXML
+    private void openDistributionReport(ActionEvent event) {
+        loadPage("DistributionReport.fxml");
+    }
+
+    @FXML
+    private void openReturnReport(ActionEvent event) {
+        loadPage("ReturnReport.fxml");
+    }
+
+    @FXML
     private void openOutstandingReport(ActionEvent event) {
         loadPage("OutstandingReport.fxml");
     }
@@ -168,11 +225,7 @@ public class DashboardsController implements Initializable {
 
     @FXML
     private void openLogout(ActionEvent event) {
-
         System.out.println("Logging out...");
-
-        // Later you can load Login.fxml here
-
     }
 
 }

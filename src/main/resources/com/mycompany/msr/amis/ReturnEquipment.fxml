@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="600.0" prefWidth="900.0"
+            styleClass="content"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.ReturnEquipmentController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <VBox spacing="15"
+          AnchorPane.topAnchor="10"
+          AnchorPane.bottomAnchor="10"
+          AnchorPane.leftAnchor="10"
+          AnchorPane.rightAnchor="10">
+
+        <!-- TITLE -->
+        <Label text="Return Equipment" styleClass="header-title"/>
+
+        <!-- ================= SECTION 1 ================= -->
+        <TitledPane text="Assignment Details" expanded="true">
+
+            <VBox spacing="10">
+
+                <HBox spacing="10">
+                    <Label text="Select Assignment:"/>
+                    <ComboBox fx:id="cmbAssignments" prefWidth="250"/>
+                </HBox>
+
+                <GridPane hgap="10" vgap="10">
+
+                    <Label text="Officer:" GridPane.rowIndex="0"/>
+                    <Label fx:id="lblAssignOfficer" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                    <Label text="Equipment Type:" GridPane.rowIndex="1"/>
+                    <Label fx:id="lblAssignType" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                    <Label text="Total Assigned:" GridPane.rowIndex="2"/>
+                    <Label fx:id="lblAssignQty" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                </GridPane>
+
+            </VBox>
+
+        </TitledPane>
+
+        <!-- ================= SECTION 2 ================= -->
+        <TitledPane text="Return Entry" expanded="true">
+
+            <HBox spacing="20">
+
+                <!-- LEFT: MANUAL -->
+                <VBox spacing="10" prefWidth="400">
+
+                    <Label text="Manual Entry" styleClass="card-title"/>
+
+                    <GridPane hgap="10" vgap="10">
+
+                        <Label text="Asset Code:" GridPane.rowIndex="0"/>
+                        <TextField fx:id="txtAssetCode" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                        <Label text="Responsible Officer:" GridPane.rowIndex="1"/>
+                        <TextField fx:id="txtOfficer" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                        <Label text="Equipment Type:" GridPane.rowIndex="2"/>
+                        <TextField fx:id="txtEquipmentType" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                        <Label text="Returned By:" GridPane.rowIndex="3"/>
+                        <TextField fx:id="txtReturnedBy" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+                        <Label text="Phone:" GridPane.rowIndex="4"/>
+                        <TextField fx:id="txtPhone" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+                        <Label text="NID:" GridPane.rowIndex="5"/>
+                        <TextField fx:id="txtNid" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+                        <Label text="Condition:" GridPane.rowIndex="6"/>
+                        <ComboBox fx:id="cmbCondition" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+
+                        <Label text="Remarks:" GridPane.rowIndex="7"/>
+                        <TextField fx:id="txtRemarks" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+
+                    </GridPane>
+
+                    <HBox spacing="10">
+                        <Button text="Return Equipment" onAction="#handleReturn"/>
+                        <Button text="Clear" onAction="#clearForm"/>
+                    </HBox>
+
+                </VBox>
+
+                <!-- RIGHT: BULK -->
+                <VBox spacing="10" prefWidth="300">
+
+                    <Label text="Bulk Upload" styleClass="card-title"/>
+
+                    <HBox spacing="10">
+                        <Button text="Choose File" onAction="#chooseFile"/>
+                        <Label fx:id="lblFileName" text="No file selected"/>
+                    </HBox>
+
+                    <Button text="Upload" onAction="#handleBulkUpload"/>
+
+                </VBox>
+
+            </HBox>
+
+        </TitledPane>
+
+        <!-- ================= SECTION 3 ================= -->
+        <TitledPane text="Returned Equipment" expanded="true">
+
+            <TableView fx:id="tableReturns">
+
+                <columns>
+
+                    <TableColumn fx:id="colAsset" text="Asset Code"/>
+                    <TableColumn fx:id="colReturnedBy" text="Returned By"/>
+                    <TableColumn fx:id="colPhone" text="Phone"/>
+                    <TableColumn fx:id="colCondition" text="Condition"/>
+                    <TableColumn fx:id="colDate" text="Date"/>
+
+                </columns>
+
+            </TableView>
+
+        </TitledPane>
+
+    </VBox>
+
+</AnchorPane>

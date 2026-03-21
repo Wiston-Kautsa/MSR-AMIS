@@ -1,0 +1,4 @@
+--patch-module
+com.mycompany.msr.amis=_
+--add-reads
+com.mycompany.msr.amis=ALL-UNNAMED

@@ -15,7 +15,7 @@ public class Assignment {
     private final IntegerProperty quantity;
     private final StringProperty date;
 
-    // ================= CONSTRUCTOR =================
+    // ================= ORIGINAL CONSTRUCTOR =================
     public Assignment(int id, String person, String department,
                       String equipmentType, int quantity, String date) {
 
@@ -24,6 +24,20 @@ public class Assignment {
         this.department = new SimpleStringProperty(department);
         this.equipmentType = new SimpleStringProperty(equipmentType);
         this.quantity = new SimpleIntegerProperty(quantity);
+        this.date = new SimpleStringProperty(date);
+    }
+
+    // ================= ADDED CONSTRUCTOR =================
+    public Assignment(String assignmentName, String officerName,
+                      String phone, String nid,
+                      String equipmentName, String category,
+                      String status, String date) {
+
+        this.id = new SimpleIntegerProperty(0);
+        this.person = new SimpleStringProperty(officerName);     // mapped
+        this.department = new SimpleStringProperty(nid);         // reused
+        this.equipmentType = new SimpleStringProperty(equipmentName);
+        this.quantity = new SimpleIntegerProperty(1);            // default
         this.date = new SimpleStringProperty(date);
     }
 
@@ -50,6 +64,35 @@ public class Assignment {
 
     public String getDate() {
         return date.get();
+    }
+
+    // ================= ADDED GETTERS (FIX) =================
+    public String getAssignmentName() {
+        return person.get();
+    }
+
+    public String getOfficerName() {
+        return person.get();
+    }
+
+    public String getPhone() {
+        return department.get();
+    }
+
+    public String getNid() {
+        return department.get();
+    }
+
+    public String getEquipmentName() {
+        return equipmentType.get();
+    }
+
+    public String getCategory() {
+        return equipmentType.get();
+    }
+
+    public String getStatus() {
+        return equipmentType.get();
     }
 
     // ================= SETTERS =================
@@ -102,7 +145,7 @@ public class Assignment {
         return date;
     }
 
-    // ================= OPTIONAL (DEBUGGING) =================
+    // ================= DEBUG =================
     @Override
     public String toString() {
         return "Assignment{" +

@@ -1,0 +1,27 @@
+Asset Code,Name,Category,Serial,Condition,Status,Source,Date
+EQP-001,Tablet,Tablets & Phones,356789012345678,New,Available,World Bank,2026-03-17
+EQP-002,Tablet,Tablets & Phones,356789012345679,New,Available,World Bank,2026-03-17
+EQP-003,Tablet,Tablets & Phones,356789012345680,New,Available,World Bank,2026-03-17
+EQP-004,Tablet,Tablets & Phones,356789012345681,New,Available,World Bank,2026-03-17
+EQP-005,Tablet,Tablets & Phones,356789012345682,New,Available,World Bank,2026-03-17
+EQP-006,Tablet,Tablets & Phones,356789012345683,New,Available,World Bank,2026-03-17
+EQP-007,Tablet,Tablets & Phones,356789012345684,New,Available,World Bank,2026-03-17
+EQP-008,Tablet,Tablets & Phones,356789012345685,New,Available,World Bank,2026-03-17
+EQP-009,Tablet,Tablets & Phones,356789012345686,New,Available,World Bank,2026-03-17
+EQP-010,Tablet,Tablets & Phones,356789012345687,New,Available,World Bank,2026-03-17
+TAB-001,Samsung Galaxy Tab A,Tablet,R52N30K8LDF,New,Available,World Bank,2026-03-17
+TAB-002,Lenovo Tab M10,Tablet,PF3A91X2LK,Good,Available,World Bank,2026-03-17
+TAB-003,Huawei MatePad,Tablet,HM92KD83LS,Good,Available,UNICEF,2026-03-17
+TAB-004,Amazon Fire HD 10,Tablet,AF10K39DK2,New,Available,UNICEF,2026-03-17
+TAB-005,Apple iPad 9th Gen,Tablet,IP9G3K2L9D,Excellent,Available,World Bank,2026-03-17
+LAP-001,Dell Latitude 5400,Laptop,DL5400K9D2,Good,Available,Government,2026-03-17
+LAP-002,HP ProBook 450,Laptop,HP450L0S2KD,New,Available,Government,2026-03-17
+LAP-003,Lenovo ThinkPad T14,Laptop,LT14K92LSA,Excellent,Available,World Bank,2026-03-17
+LAP-004,Acer Aspire 5,Laptop,AA5D8K29LS,Fair,Available,Government,2026-03-17
+LAP-005,MacBook Air M1,Laptop,MBA1MK29LS,Excellent,Available,UNICEF,2026-03-17
+PRN-001,HP LaserJet Pro M404,Printer,HPM404KLS2,Good,Available,World Bank,2026-03-17
+PRN-002,Canon Pixma G3420,Printer,CPG3420LS2,New,Available,UNICEF,2026-03-17
+PRN-003,Brother HL-L2350DW,Printer,BHL2350KLS,Good,Available,Government,2026-03-17
+RTR-001,TP-Link Archer C6,Router,TPC6K29LSA,New,Available,World Bank,2026-03-17
+RTR-002,MikroTik hAP Lite,Router,MHL29KLS22,Good,Available,Government,2026-03-17
+RTR-003,Cisco RV340,Router,CRV340LS92,Excellent,Available,World Bank,2026-03-17
