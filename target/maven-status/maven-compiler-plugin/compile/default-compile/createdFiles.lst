@@ -1,0 +1,11 @@
+com\mycompany\msr\amis\EquipmentListController.class
+com\mycompany\msr\amis\Equipment.class
+com\mycompany\msr\amis\Assignment.class
+com\mycompany\msr\amis\AssignmentRecord.class
+com\mycompany\msr\amis\AddEquipmentController.class
+com\mycompany\msr\amis\App.class
+com\mycompany\msr\amis\AddEquipmentController$1.class
+com\mycompany\msr\amis\CreateAssignmentController.class
+module-info.class
+com\mycompany\msr\amis\DatabaseHandler.class
+com\mycompany\msr\amis\Distribution.class

@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefHeight="700" prefWidth="1100"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.mycompany.msr.amis.DashboardsController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <!-- ================= HEADER ================= -->
+
+    <top>
+        <HBox alignment="CENTER_LEFT" styleClass="header">
+            <padding>
+                <Insets top="15" bottom="15" left="20" right="20"/>
+            </padding>
+
+            <children>
+
+                <Label text="MSR Asset Management System"
+                       styleClass="header-title"/>
+
+            </children>
+
+        </HBox>
+    </top>
+
+    <!-- ================= SIDEBAR ================= -->
+
+    <left>
+
+        <VBox spacing="15" prefWidth="260" styleClass="sidebar">
+
+            <padding>
+                <Insets top="20" left="15" right="15" bottom="20"/>
+            </padding>
+
+            <children>
+
+                <Label text="MSR-AMIS" styleClass="logo"/>
+
+                <Separator/>
+
+                <!-- DASHBOARD -->
+
+                <Button text="Dashboard"
+                        styleClass="sidebar-button"
+                        onAction="#openDashboard"/>
+
+                <!-- MENU -->
+
+                <Accordion VBox.vgrow="ALWAYS">
+
+                    <panes>
+
+                        <!-- EQUIPMENT -->
+
+                        <TitledPane text="Equipment Inventory">
+
+                            <content>
+                                <VBox spacing="5">
+
+                                    <children>
+
+                                        <Button text="Add Equipment"
+                                                styleClass="submenu-button"
+                                                onAction="#openAddEquipment"/>
+
+                                        <Button text="Equipment List"
+                                                styleClass="submenu-button"
+                                                onAction="#openEquipmentList"/>
+
+                                    </children>
+
+                                </VBox>
+                            </content>
+
+                        </TitledPane>
+
+
+                        <!-- ASSIGNMENT -->
+
+                        <TitledPane text="Equipment Issuing">
+
+                            <content>
+                                <VBox spacing="5">
+
+                                    <children>
+
+                                        <Button text="Create Assignment"
+                                                styleClass="submenu-button"
+                                                onAction="#openCreateAssignment"/>
+
+                                        <Button text="Distribute Equipment"
+                                                styleClass="submenu-button"
+                                                onAction="#openDistributeEquipment"/>
+
+                                        <Button text="Assignment List"
+                                                styleClass="submenu-button"
+                                                onAction="#openAssignmentList"/>
+
+                                    </children>
+
+                                </VBox>
+                            </content>
+
+                        </TitledPane>
+
+
+                        <!-- RETURNS -->
+
+                        <TitledPane text="Equipment Return">
+
+                            <content>
+                                <VBox spacing="5">
+
+                                    <children>
+
+                                        <Button text="Return Equipment"
+                                                styleClass="submenu-button"
+                                                onAction="#openReturnEquipment"/>
+
+                                    </children>
+
+                                </VBox>
+                            </content>
+
+                        </TitledPane>
+
+
+                        <!-- REPORTS -->
+
+                        <TitledPane text="Reports">
+
+                            <content>
+                                <VBox spacing="5">
+
+                                    <children>
+
+                                        <Button text="Inventory Report"
+                                                styleClass="submenu-button"
+                                                onAction="#openInventoryReport"/>
+
+                                        <Button text="Assignment Report"
+                                                styleClass="submenu-button"
+                                                onAction="#openAssignmentReport"/>
+
+                                        <Button text="Outstanding Equipment"
+                                                styleClass="submenu-button"
+                                                onAction="#openOutstandingReport"/>
+
+                                    </children>
+
+                                </VBox>
+                            </content>
+
+                        </TitledPane>
+
+                    </panes>
+
+                </Accordion>
+
+                <Separator/>
+
+                <!-- USERS -->
+
+                <Button text="Users"
+                        styleClass="sidebar-button"
+                        onAction="#openUsers"/>
+
+                <Separator/>
+
+                <!-- LOGOUT -->
+
+                <Button text="Logout"
+                        styleClass="sidebar-button"
+                        onAction="#openLogout"/>
+
+            </children>
+
+        </VBox>
+
+    </left>
+
+
+    <!-- ================= DASHBOARD CONTENT ================= -->
+
+    <center>
+
+        <StackPane fx:id="contentArea">
+
+            <children>
+
+                <VBox spacing="25" style="-fx-padding:30;">
+
+                    <children>
+
+                        <Label text="Dashboard"
+                               style="-fx-font-size:22px; -fx-font-weight:bold;" />
+
+                        <HBox spacing="20">
+
+                            <children>
+
+                                <!-- Assets Entered -->
+
+                                <VBox spacing="10"
+                                      style="-fx-background-color:white;
+                                             -fx-padding:20;
+                                             -fx-background-radius:10;
+                                             -fx-pref-width:200;
+                                             -fx-alignment:center;">
+
+                                    <children>
+
+                                        <Label text="Assets Entered"
+                                               style="-fx-font-size:14px;" />
+
+                                        <Label fx:id="lblAssetsEntered"
+                                               text="0"
+                                               style="-fx-font-size:26px; -fx-font-weight:bold;" />
+
+                                    </children>
+
+                                </VBox>
+
+
+                                <!-- Available Assets -->
+
+                                <VBox spacing="10"
+                                      style="-fx-background-color:white;
+                                             -fx-padding:20;
+                                             -fx-background-radius:10;
+                                             -fx-pref-width:200;
+                                             -fx-alignment:center;">
+
+                                    <children>
+
+                                        <Label text="Available Assets"
+                                               style="-fx-font-size:14px;" />
+
+                                        <Label fx:id="lblAvailableAssets"
+                                               text="0"
+                                               style="-fx-font-size:26px; -fx-font-weight:bold;" />
+
+                                    </children>
+
+                                </VBox>
+
+
+                                <!-- Issued Assets -->
+
+                                <VBox spacing="10"
+                                      style="-fx-background-color:white;
+                                             -fx-padding:20;
+                                             -fx-background-radius:10;
+                                             -fx-pref-width:200;
+                                             -fx-alignment:center;">
+
+                                    <children>
+
+                                        <Label text="Issued Assets"
+                                               style="-fx-font-size:14px;" />
+
+                                        <Label fx:id="lblIssuedAssets"
+                                               text="0"
+                                               style="-fx-font-size:26px; -fx-font-weight:bold;" />
+
+                                    </children>
+
+                                </VBox>
+
+
+                                <!-- Waiting Return -->
+
+                                <VBox spacing="10"
+                                      style="-fx-background-color:white;
+                                             -fx-padding:20;
+                                             -fx-background-radius:10;
+                                             -fx-pref-width:200;
+                                             -fx-alignment:center;">
+
+                                    <children>
+
+                                        <Label text="Waiting Return"
+                                               style="-fx-font-size:14px;" />
+
+                                        <Label fx:id="lblWaitingReturn"
+                                               text="0"
+                                               style="-fx-font-size:26px; -fx-font-weight:bold;" />
+
+                                    </children>
+
+                                </VBox>
+
+                            </children>
+
+                        </HBox>
+
+                    </children>
+
+                </VBox>
+
+            </children>
+
+        </StackPane>
+
+    </center>
+
+</BorderPane>

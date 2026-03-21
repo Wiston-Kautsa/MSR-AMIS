@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="700.0" prefWidth="1000.0"
+            xmlns="http://javafx.com/javafx/11"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.CreateAssignmentController">
+
+    <!-- ✅ FIXED -->
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <children>
+
+        <ScrollPane fitToWidth="true"
+                    AnchorPane.topAnchor="0.0"
+                    AnchorPane.bottomAnchor="0.0"
+                    AnchorPane.leftAnchor="0.0"
+                    AnchorPane.rightAnchor="0.0">
+
+            <content>
+
+                <VBox spacing="20.0" styleClass="main-container">
+
+                    <padding>
+                        <Insets top="20.0" left="20.0" right="20.0" bottom="20.0"/>
+                    </padding>
+
+                    <!-- TITLE -->
+                    <Label text="Create Assignment"
+                           styleClass="title-label"/>
+
+                    <!-- FORM -->
+                    <TitledPane text="Assignment Details" expanded="true" styleClass="card">
+
+                        <content>
+
+                            <GridPane hgap="15.0" vgap="15.0">
+
+                                <padding>
+                                    <Insets top="10.0" left="10.0" right="10.0" bottom="10.0"/>
+                                </padding>
+
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="30.0"/>
+                                    <ColumnConstraints percentWidth="70.0"/>
+                                </columnConstraints>
+
+                                <Label text="Responsible Person:" GridPane.rowIndex="0"/>
+                                <TextField fx:id="txtPerson" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                                <Label text="Department:" GridPane.rowIndex="1"/>
+                                <TextField fx:id="txtDepartment" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                                <Label text="Equipment Type:" GridPane.rowIndex="2"/>
+                                <TextField fx:id="txtEquipmentType" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                                <Label text="Quantity:" GridPane.rowIndex="3"/>
+                                <TextField fx:id="txtQuantity" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+                            </GridPane>
+
+                        </content>
+
+                    </TitledPane>
+
+                    <!-- BUTTONS -->
+                    <HBox spacing="15.0" alignment="CENTER_RIGHT">
+
+                        <Button text="Save Assignment"
+                                onAction="#saveAssignment"
+                                styleClass="btn-success"/>
+
+                        <Button text="Clear"
+                                onAction="#clearForm"
+                                styleClass="btn-secondary"/>
+
+                    </HBox>
+
+                    <!-- TABLE -->
+                    <TitledPane text="Assignment Records" expanded="true" styleClass="card">
+
+                        <content>
+
+                            <TableView fx:id="tableAssignments"
+                                       prefHeight="350.0">
+                                
+                                 <columnResizePolicy>
+                                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                                   </columnResizePolicy>
+
+                                <columns>
+
+                                    <TableColumn fx:id="colPerson" text="Person"/>
+                                    <TableColumn fx:id="colDepartment" text="Department"/>
+                                    <TableColumn fx:id="colEquipment" text="Equipment"/>
+                                    <TableColumn fx:id="colQty" text="Qty"/>
+                                    <TableColumn fx:id="colDate" text="Date"/>
+
+                                </columns>
+
+                            </TableView>
+
+                        </content>
+
+                    </TitledPane>
+
+                </VBox>
+
+            </content>
+
+        </ScrollPane>
+
+    </children>
+
+</AnchorPane>

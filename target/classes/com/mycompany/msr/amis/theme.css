@@ -1,0 +1,147 @@
+/* ================= ROOT ================= */
+
+.root{
+    -fx-font-family: "Segoe UI";
+    -fx-background-color: #f5f6fa;
+}
+
+
+/* ================= HEADER ================= */
+
+.header{
+    -fx-background-color: #ecf0f1;
+    -fx-padding: 15;
+}
+
+.header-title{
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+
+/* ================= SIDEBAR ================= */
+
+.sidebar{
+    -fx-background-color: #2c3e50;
+    -fx-padding: 20;
+}
+
+.logo{
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+
+/* ================= SIDEBAR BUTTON ================= */
+
+.sidebar-button{
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-pref-width: 200;
+    -fx-padding: 10;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.sidebar-button:hover{
+    -fx-background-color: #34495e;
+}
+
+
+/* ================= SUBMENU BUTTON ================= */
+
+.submenu-button{
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-pref-width: 200;
+    -fx-padding: 6 0 6 20;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.submenu-button:hover{
+    -fx-background-color: #34495e;
+}
+
+
+/* ================= ACCORDION ================= */
+
+.titled-pane{
+    -fx-text-fill: white;
+}
+
+.titled-pane > .title{
+    -fx-background-color: #2c3e50;
+}
+
+.titled-pane > .title > .arrow-button .arrow{
+    -fx-background-color: white;
+}
+
+
+/* ================= CONTENT ================= */
+
+.content{
+    -fx-padding: 20;
+}
+
+
+/* ================= DASHBOARD CARDS ================= */
+
+.card{
+    -fx-background-color: white;
+    -fx-padding: 20;
+    -fx-border-color: #dddddd;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-pref-width: 180;
+}
+
+.card-title{
+    -fx-font-size: 13px;
+    -fx-text-fill: #7f8c8d;
+}
+
+.card-value{
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+
+/* ================= TABLE ================= */
+
+.table-view{
+    -fx-background-color: white;
+}
+
+.table-view .column-header{
+    -fx-background-color: #ecf0f1;
+}
+
+.table-view .column-header-background{
+    -fx-background-color: #ecf0f1;
+}
+
+
+/* ================= NORMAL BUTTONS ================= */
+
+.button{
+    -fx-background-radius: 6;
+    -fx-background-color: #34495e;
+    -fx-text-fill: white;   /* FIX: ensures text is visible */
+    -fx-padding: 10 20 10 20;
+}
+
+.button:hover{
+    -fx-background-color: #2c3e50;
+    -fx-cursor: hand;
+}
+
+
+/* ================= SEPARATOR ================= */
+
+.separator .line{
+    -fx-border-color: #95a5a6;
+}
