@@ -9,6 +9,10 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 
 import javafx.scene.Parent;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
 import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -22,21 +26,19 @@ public class DashboardsController implements Initializable {
     @FXML
     private StackPane contentArea;
 
-    @FXML
-    private Label lblAssetsEntered;
-
-    @FXML
-    private Label lblAvailableAssets;
-
-    @FXML
-    private Label lblIssuedAssets;
-
-    @FXML
-    private Label lblWaitingReturn;
+    @FXML private Label lblAssetsEntered;
+    @FXML private Label lblAvailableAssets;
+    @FXML private Label lblIssuedAssets;
+    @FXML private Label lblWaitingReturn;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        refreshDashboard(); // load stats on start
+    }
 
+    /* ================= DASHBOARD REFRESH ================= */
+
+    private void refreshDashboard() {
         if (lblAssetsEntered != null) {
             lblAssetsEntered.setText(String.valueOf(getTotalAssets()));
         }
@@ -52,7 +54,6 @@ public class DashboardsController implements Initializable {
         if (lblWaitingReturn != null) {
             lblWaitingReturn.setText(String.valueOf(getWaitingReturn()));
         }
-
     }
 
     /* ================= DATABASE METHODS ================= */
@@ -113,16 +114,20 @@ public class DashboardsController implements Initializable {
         return 0;
     }
 
-    /* ================= PAGE LOADER ================= */
+    /* ================= PAGE LOADER (FOR OTHER BUTTONS) ================= */
 
     private void loadPage(String fxml) {
 
         try {
 
-            FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource(fxml)
-            );
+            URL resource = getClass().getResource("/com/mycompany/msr/amis/" + fxml);
 
+            if (resource == null) {
+                System.out.println("FXML not found: " + fxml);
+                return;
+            }
+
+            FXMLLoader loader = new FXMLLoader(resource);
             Parent root = loader.load();
 
             contentArea.getChildren().clear();
@@ -136,22 +141,32 @@ public class DashboardsController implements Initializable {
             contentArea.getChildren().add(root);
 
         } catch (Exception e) {
-
             System.out.println("ERROR loading page: " + fxml);
             e.printStackTrace();
-
         }
-
     }
 
-    /* ================= DASHBOARD ================= */
+    /* ================= DASHBOARD (SCENE SWITCH ONLY) ================= */
 
     @FXML
     private void openDashboard(ActionEvent event) {
-        contentArea.getChildren().clear();
+        try {
+            Parent root = FXMLLoader.load(
+                getClass().getResource("/com/mycompany/msr/amis/Dashboard.fxml")
+            );
+
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+
+            stage.setScene(new Scene(root));
+            stage.show();
+
+        } catch (Exception e) {
+            System.out.println("ERROR loading Dashboard.fxml");
+            e.printStackTrace();
+        }
     }
 
-    /* ================= EQUIPMENT ================= */
+    /* ================= OTHER BUTTONS (CONTENT LOAD) ================= */
 
     @FXML
     private void openAddEquipment(ActionEvent event) {
@@ -162,8 +177,6 @@ public class DashboardsController implements Initializable {
     private void openEquipmentList(ActionEvent event) {
         loadPage("EquipmentList.fxml");
     }
-
-    /* ================= ASSIGNMENTS ================= */
 
     @FXML
     private void openCreateAssignment(ActionEvent event) {
@@ -180,14 +193,10 @@ public class DashboardsController implements Initializable {
         loadPage("AssignmentList.fxml");
     }
 
-    /* ================= RETURNS ================= */
-
     @FXML
     private void openReturnEquipment(ActionEvent event) {
         loadPage("ReturnEquipment.fxml");
     }
-
-    /* ================= REPORTS ================= */
 
     @FXML
     private void openInventoryReport(ActionEvent event) {
@@ -214,18 +223,13 @@ public class DashboardsController implements Initializable {
         loadPage("OutstandingReport.fxml");
     }
 
-    /* ================= USERS ================= */
-
     @FXML
     private void openUsers(ActionEvent event) {
         loadPage("Users.fxml");
     }
 
-    /* ================= LOGOUT ================= */
-
     @FXML
     private void openLogout(ActionEvent event) {
-        System.out.println("Logging out...");
+        loadPage("login.fxml"); // or Login.fxml
     }
-
 }

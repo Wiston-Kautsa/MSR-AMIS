@@ -30,8 +30,11 @@ public class OutstandingReportController implements Initializable {
     private TableColumn<Distribution, String> colPhone;
     @FXML
     private TableColumn<Distribution, String> colNID;
+
+    // ✅ FIXED: String → Integer
     @FXML
-    private TableColumn<Distribution, String> colAssignmentId;
+    private TableColumn<Distribution, Integer> colAssignmentId;
+
     @FXML
     private TableColumn<Distribution, String> colDate;
     @FXML
@@ -42,12 +45,14 @@ public class OutstandingReportController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
-        // Table bindings
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colAssignedTo.setCellValueFactory(new PropertyValueFactory<>("assignedTo"));
         colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
         colNID.setCellValueFactory(new PropertyValueFactory<>("nid"));
+
+        // ✅ FIXED type consistency
         colAssignmentId.setCellValueFactory(new PropertyValueFactory<>("assignmentId"));
+
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
 
@@ -75,7 +80,9 @@ public class OutstandingReportController implements Initializable {
                         rs.getString("nid")
                 );
 
-                d.setAssignmentId(String.valueOf(rs.getInt("assignment_id")));
+                // ✅ FIXED: pass int directly
+                d.setAssignmentId(rs.getInt("assignment_id"));
+
                 d.setStatus("OUTSTANDING");
 
                 data.add(d);
@@ -122,7 +129,9 @@ public class OutstandingReportController implements Initializable {
                         rs.getString("nid")
                 );
 
-                d.setAssignmentId(String.valueOf(rs.getInt("assignment_id")));
+                // ✅ FIXED
+                d.setAssignmentId(rs.getInt("assignment_id"));
+
                 d.setStatus("OUTSTANDING");
 
                 data.add(d);
@@ -141,7 +150,6 @@ public class OutstandingReportController implements Initializable {
     private void handleRefresh(ActionEvent event) {
 
         cmbPerson.setValue(null);
-
         loadData();
 
         showAlert("Refresh", "Outstanding data refreshed.");
@@ -173,7 +181,7 @@ public class OutstandingReportController implements Initializable {
                       .append(d.getAssignedTo()).append(",")
                       .append(d.getPhone()).append(",")
                       .append(d.getNid()).append(",")
-                      .append(d.getAssignmentId()).append(",")
+                      .append(String.valueOf(d.getAssignmentId())).append(",") // safe
                       .append(d.getDate()).append(",")
                       .append(d.getStatus()).append("\n");
             }

@@ -9,6 +9,7 @@ D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\DistributeEquipment
 D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\OutstandingReportController.java
 D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\DashboardsController.java
 D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\ReturnEquipmentController.java
+D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\User.java
 D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\Equipment.java
 D:\School\JAVA\MSR-AMIS\src\main\java\module-info.java
 D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\AssignmentListController.java
@@ -18,3 +19,4 @@ D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\CreateAssignmentCon
 D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\AddEquipmentController.java
 D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\DatabaseHandler.java
 D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\Return.java
+D:\School\JAVA\MSR-AMIS\src\main\java\com\mycompany\msr\amis\UsersController.java

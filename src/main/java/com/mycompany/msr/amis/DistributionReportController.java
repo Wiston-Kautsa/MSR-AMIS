@@ -32,8 +32,11 @@ public class DistributionReportController implements Initializable {
     private TableColumn<Distribution, String> colPhone;
     @FXML
     private TableColumn<Distribution, String> colNID;
+
+    // ✅ FIXED: String → Integer
     @FXML
-    private TableColumn<Distribution, String> colAssignmentId;
+    private TableColumn<Distribution, Integer> colAssignmentId;
+
     @FXML
     private TableColumn<Distribution, String> colStatus;
     @FXML
@@ -50,7 +53,10 @@ public class DistributionReportController implements Initializable {
         colAssignedTo.setCellValueFactory(new PropertyValueFactory<>("assignedTo"));
         colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
         colNID.setCellValueFactory(new PropertyValueFactory<>("nid"));
+
+        // ✅ FIXED
         colAssignmentId.setCellValueFactory(new PropertyValueFactory<>("assignmentId"));
+
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
 
@@ -74,13 +80,15 @@ public class DistributionReportController implements Initializable {
 
                 Distribution d = new Distribution(
                         rs.getString("asset_code"),
-                        "", // serialNumber (not available)
+                        "",
                         rs.getString("assigned_to"),
                         rs.getString("phone"),
                         rs.getString("nid")
                 );
 
-                d.setAssignmentId(String.valueOf(rs.getInt("assignment_id")));
+                // ✅ FIXED
+                d.setAssignmentId(rs.getInt("assignment_id"));
+
                 d.setStatus(status);
 
                 data.add(d);
@@ -140,7 +148,9 @@ public class DistributionReportController implements Initializable {
                         rs.getString("nid")
                 );
 
-                d.setAssignmentId(String.valueOf(rs.getInt("assignment_id")));
+                // ✅ FIXED
+                d.setAssignmentId(rs.getInt("assignment_id"));
+
                 d.setStatus(stat);
 
                 data.add(d);
@@ -192,7 +202,7 @@ public class DistributionReportController implements Initializable {
                       .append(d.getAssignedTo()).append(",")
                       .append(d.getPhone()).append(",")
                       .append(d.getNid()).append(",")
-                      .append(d.getAssignmentId()).append(",")
+                      .append(String.valueOf(d.getAssignmentId())).append(",") // safe
                       .append(d.getStatus()).append(",")
                       .append(d.getDate()).append("\n");
             }

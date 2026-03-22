@@ -5,25 +5,17 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableRow;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 
 import java.net.URL;
+import java.util.Optional;
 import java.util.ResourceBundle;
-
-import com.mycompany.msr.amis.DatabaseHandler;
 
 public class CreateAssignmentController implements Initializable {
 
     // ================= UI =================
-    @FXML private TextField txtPerson;
+    @FXML private ComboBox<String> cmbPerson;
     @FXML private TextField txtDepartment;
     @FXML private TextField txtEquipmentType;
     @FXML private TextField txtQuantity;
@@ -36,113 +28,138 @@ public class CreateAssignmentController implements Initializable {
     @FXML private TableColumn<Assignment, Integer> colQty;
     @FXML private TableColumn<Assignment, String> colDate;
 
-    // ================= DATA =================
     private final ObservableList<Assignment> assignmentList = FXCollections.observableArrayList();
-    private Integer editingId = null;
 
-    // ================= INIT =================
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         setupTable();
         setupRightClickMenu();
+        loadUsers();
         loadAssignments();
+
+        if (cmbPerson != null) {
+            cmbPerson.setPromptText("Select Responsible Person");
+
+            cmbPerson.setOnAction(e -> {
+                if ("➕ Add New User".equals(cmbPerson.getValue())) {
+                    openAddUserDialog();
+                }
+            });
+        }
+    }
+
+    // ================= LOAD USERS =================
+    private void loadUsers() {
+
+        if (cmbPerson == null) {
+            System.out.println("cmbPerson not injected!");
+            return;
+        }
+
+        cmbPerson.getItems().clear();
+
+        try {
+            for (User u : DatabaseHandler.getUsers()) {
+                cmbPerson.getItems().add(u.getFullName());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        cmbPerson.getItems().add("➕ Add New User");
+    }
+
+    // ================= ADD USER =================
+    private void openAddUserDialog() {
+
+        Dialog<String[]> dialog = new Dialog<>();
+        dialog.setTitle("Add User");
+
+        TextField nameField = new TextField();
+        TextField phoneField = new TextField();
+        TextField emailField = new TextField();
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        grid.add(new Label("Full Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+
+        grid.add(new Label("Phone:"), 0, 1);
+        grid.add(phoneField, 1, 1);
+
+        grid.add(new Label("Email:"), 0, 2);
+        grid.add(emailField, 1, 2);
+
+        dialog.getDialogPane().setContent(grid);
+
+        ButtonType addBtn = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(addBtn, ButtonType.CANCEL);
+
+        dialog.setResultConverter(btn -> {
+            if (btn == addBtn) {
+                return new String[]{
+                        nameField.getText(),
+                        phoneField.getText(),
+                        emailField.getText()
+                };
+            }
+            return null;
+        });
+
+        Optional<String[]> result = dialog.showAndWait();
+
+        result.ifPresent(data -> {
+
+            String name = data[0].trim();
+            String phone = data[1].trim();
+            String email = data[2].trim();
+
+            if (name.isEmpty()) {
+                showWarning("Error", "Name required");
+                return;
+            }
+
+            if (!email.isEmpty() && DatabaseHandler.emailExists(email)) {
+                showWarning("Duplicate", "Email already exists");
+                return;
+            }
+
+            if (!phone.isEmpty() && DatabaseHandler.phoneExists(phone)) {
+                showWarning("Duplicate", "Phone already exists");
+                return;
+            }
+
+            try {
+                String username = name.replaceAll(" ", "").toLowerCase();
+                String password = "1234";
+
+                DatabaseHandler.insertUser(name, username, password, "USER", phone, email);
+
+                loadUsers();
+                cmbPerson.setValue(name);
+
+            } catch (Exception e) {
+                showError("Error", "Failed to add user");
+            }
+        });
     }
 
     // ================= TABLE =================
     private void setupTable() {
-
         colPerson.setCellValueFactory(c -> c.getValue().personProperty());
         colDepartment.setCellValueFactory(c -> c.getValue().departmentProperty());
         colEquipment.setCellValueFactory(c -> c.getValue().equipmentTypeProperty());
         colQty.setCellValueFactory(c -> c.getValue().quantityProperty().asObject());
         colDate.setCellValueFactory(c -> c.getValue().dateProperty());
 
-        tableAssignments.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         tableAssignments.setItems(assignmentList);
     }
 
-    // ================= LOAD =================
     private void loadAssignments() {
-        try {
-            assignmentList.clear();
-            assignmentList.addAll(DatabaseHandler.getAssignments());
-        } catch (Exception e) {
-            showError("Load Error", e.getMessage());
-        }
-    }
-
-    // ================= SAVE =================
-    @FXML
-    private void saveAssignment() {
-
-        String person = safe(txtPerson);
-        String dept = safe(txtDepartment);
-        String type = safe(txtEquipmentType);
-        String qtyText = safe(txtQuantity);
-
-        if (person.isEmpty() || type.isEmpty() || qtyText.isEmpty()) {
-            showWarning("Missing Fields", "Person, Equipment Type, and Quantity are required.");
-            return;
-        }
-
-        int qty;
-
-        try {
-            qty = Integer.parseInt(qtyText);
-            if (qty <= 0) {
-                showWarning("Invalid Quantity", "Quantity must be greater than 0.");
-                return;
-            }
-        } catch (NumberFormatException e) {
-            showWarning("Invalid Input", "Quantity must be a valid number.");
-            return;
-        }
-
-        try {
-
-            int available = DatabaseHandler.getAvailableStock(type);
-            if (qty > available && editingId == null) {
-                showWarning("Stock Error", "Not enough inventory available. Available: " + available);
-                return;
-            }
-
-            if (editingId != null) {
-
-                if (DatabaseHandler.isAssignmentLocked(editingId)) {
-                    showWarning("Locked", "Assignment already used. Cannot edit.");
-                    return;
-                }
-
-                DatabaseHandler.updateAssignment(editingId, person, dept, type, qty);
-                editingId = null;
-
-            } else {
-
-                DatabaseHandler.insertAssignment(person, dept, type, qty);
-            }
-
-            clearForm();
-            loadAssignments();
-
-        } catch (Exception e) {
-            showError("Database Error", e.getMessage());
-        }
-    }
-
-    // ================= CLEAR =================
-    @FXML
-    private void clearForm() {
-
-        txtPerson.clear();
-        txtDepartment.clear();
-        txtEquipmentType.clear();
-        txtQuantity.clear();
-
-        editingId = null;
-
-        if (tableAssignments != null) {
-            tableAssignments.getSelectionModel().clearSelection();
-        }
+        assignmentList.clear();
+        assignmentList.addAll(DatabaseHandler.getAssignments());
     }
 
     // ================= RIGHT CLICK MENU =================
@@ -153,24 +170,21 @@ public class CreateAssignmentController implements Initializable {
             TableRow<Assignment> row = new TableRow<>();
             ContextMenu menu = new ContextMenu();
 
-            MenuItem edit = new MenuItem("Edit Assignment");
             MenuItem delete = new MenuItem("Delete Assignment");
-
-            edit.setOnAction(e -> {
-                Assignment selected = row.getItem();
-                if (selected != null) {
-                    editAssignment(selected);
-                }
-            });
 
             delete.setOnAction(e -> {
                 Assignment selected = row.getItem();
                 if (selected != null) {
-                    deleteAssignment(selected);
+                    try {
+                        DatabaseHandler.deleteAssignment(selected.getId());
+                        loadAssignments();
+                    } catch (Exception ex) {
+                        showError("Error", ex.getMessage());
+                    }
                 }
             });
 
-            menu.getItems().addAll(edit, delete);
+            menu.getItems().add(delete);
 
             row.contextMenuProperty().bind(
                     Bindings.when(row.emptyProperty())
@@ -182,62 +196,72 @@ public class CreateAssignmentController implements Initializable {
         });
     }
 
-    // ================= EDIT =================
-    private void editAssignment(Assignment selected) {
+    // ================= SAVE =================
+    @FXML
+    private void saveAssignment() {
 
-        if (DatabaseHandler.isAssignmentLocked(selected.getId())) {
-            showWarning("Locked", "This assignment cannot be edited.");
+        String person = cmbPerson != null && cmbPerson.getValue() != null ? cmbPerson.getValue() : "";
+
+        if (person.equals("➕ Add New User")) {
+            showWarning("Invalid Selection", "Please select a real user.");
             return;
         }
 
-        editingId = selected.getId();
+        String dept = safe(txtDepartment);
+        String type = safe(txtEquipmentType).toUpperCase();
+        String qtyText = safe(txtQuantity);
 
-        txtPerson.setText(selected.getPerson());
-        txtDepartment.setText(selected.getDepartment());
-        txtEquipmentType.setText(selected.getEquipmentType());
-        txtQuantity.setText(String.valueOf(selected.getQuantity()));
-    }
-
-    // ================= DELETE =================
-    private void deleteAssignment(Assignment selected) {
-
-        if (DatabaseHandler.isAssignmentLocked(selected.getId())) {
-            showWarning("Locked", "This assignment cannot be deleted.");
+        if (person.isEmpty() || type.isEmpty() || qtyText.isEmpty()) {
+            showWarning("Missing Fields", "Required fields missing.");
             return;
         }
 
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Confirm Delete");
-        confirm.setHeaderText(null);
-        confirm.setContentText("Delete this assignment?");
+        int qty;
 
-        confirm.showAndWait().ifPresent(res -> {
-            if (res == ButtonType.OK) {
-                try {
-                    DatabaseHandler.deleteAssignment(selected.getId());
-                    loadAssignments();
-                } catch (Exception e) {
-                    showError("Delete Error", e.getMessage());
-                }
+        try {
+            qty = Integer.parseInt(qtyText);
+            if (qty <= 0) throw new Exception();
+        } catch (Exception e) {
+            showWarning("Invalid", "Quantity must be valid.");
+            return;
+        }
+
+        try {
+            int available = DatabaseHandler.getAvailableStock(type);
+
+            if (qty > available) {
+                showWarning("Stock", "Not enough stock.");
+                return;
             }
-        });
+
+            DatabaseHandler.insertAssignment(person, dept, type, qty);
+
+            clearForm();
+            loadAssignments();
+
+        } catch (Exception e) {
+            showError("DB Error", e.getMessage());
+        }
     }
 
-    // ================= HELPERS =================
-    private String safe(TextField field) {
-        return field.getText() == null ? "" : field.getText().trim();
+    // ================= CLEAR =================
+    @FXML
+    private void clearForm() {
+        if (cmbPerson != null) cmbPerson.setValue(null);
+        txtDepartment.clear();
+        txtEquipmentType.clear();
+        txtQuantity.clear();
     }
 
-    // ================= ALERTS =================
-    private void showWarning(String title, String msg) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, msg);
-        alert.setTitle(title);
-        alert.showAndWait();
+    private String safe(TextField f) {
+        return f.getText() == null ? "" : f.getText().trim();
     }
 
-    private void showError(String title, String msg) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, msg);
-        alert.setTitle(title);
-        alert.showAndWait();
+    private void showWarning(String t, String m) {
+        new Alert(Alert.AlertType.WARNING, m).showAndWait();
+    }
+
+    private void showError(String t, String m) {
+        new Alert(Alert.AlertType.ERROR, m).showAndWait();
     }
 }

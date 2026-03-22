@@ -15,8 +15,9 @@ public class Distribution {
     private final StringProperty nid;
     private final ObjectProperty<LocalDate> distributionDate;
 
-    // ✅ ADDED (missing)
-    private final StringProperty assignmentId;
+    // ✅ FIXED: changed from StringProperty → IntegerProperty
+    private final IntegerProperty assignmentId;
+
     private final StringProperty status;
 
     // ================= DATE FORMAT =================
@@ -48,8 +49,8 @@ public class Distribution {
                 distributionDate != null ? distributionDate : LocalDate.now()
         );
 
-        // ✅ initialize added fields
-        this.assignmentId = new SimpleStringProperty("");
+        // ✅ FIXED: correct type initialization
+        this.assignmentId = new SimpleIntegerProperty(0);
         this.status = new SimpleStringProperty("ACTIVE");
     }
 
@@ -84,8 +85,8 @@ public class Distribution {
 
     public LocalDate getDistributionDate() { return distributionDate.get(); }
 
-    // ================= ADDED GETTERS =================
-    public String getAssignmentId() { return assignmentId.get(); }
+    // ✅ FIXED: now returns int
+    public int getAssignmentId() { return assignmentId.get(); }
 
     public String getStatus() { return status.get(); }
 
@@ -114,8 +115,8 @@ public class Distribution {
         distributionDate.set(value != null ? value : LocalDate.now());
     }
 
-    // ================= ADDED SETTERS =================
-    public void setAssignmentId(String value) { assignmentId.set(safe(value)); }
+    // ✅ FIXED: now accepts int
+    public void setAssignmentId(int value) { assignmentId.set(value); }
 
     public void setStatus(String value) { status.set(safe(value)); }
 
@@ -134,8 +135,8 @@ public class Distribution {
 
     public ObjectProperty<LocalDate> distributionDateProperty() { return distributionDate; }
 
-    // ================= ADDED PROPERTY METHODS =================
-    public StringProperty assignmentIdProperty() { return assignmentId; }
+    // ✅ FIXED: now IntegerProperty
+    public IntegerProperty assignmentIdProperty() { return assignmentId; }
 
     public StringProperty statusProperty() { return status; }
 
@@ -149,7 +150,7 @@ public class Distribution {
                 ", assignedTo='" + getAssignedTo() + '\'' +
                 ", phone='" + getPhone() + '\'' +
                 ", nid='" + getNid() + '\'' +
-                ", assignmentId='" + getAssignmentId() + '\'' +
+                ", assignmentId=" + getAssignmentId() +
                 ", status='" + getStatus() + '\'' +
                 ", date=" + getFormattedDate() +
                 '}';

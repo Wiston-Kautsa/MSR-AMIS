@@ -30,7 +30,6 @@
 
     <!-- ================= SIDEBAR ================= -->
     <left>
-
         <VBox spacing="15" prefWidth="260" styleClass="sidebar">
 
             <padding>
@@ -162,12 +161,10 @@
             </children>
 
         </VBox>
-
     </left>
 
     <!-- ================= CONTENT ================= -->
     <center>
-
         <StackPane fx:id="contentArea">
 
             <children>
@@ -187,7 +184,9 @@
                                 <VBox spacing="10" styleClass="card">
                                     <children>
                                         <Label text="Assets Entered"/>
-                                        <Label fx:id="lblAssetsEntered" text="0" styleClass="card-value"/>
+                                        <Label fx:id="lblAssetsEntered"
+                                               text="0"
+                                               styleClass="card-value"/>
                                     </children>
                                 </VBox>
 
@@ -195,7 +194,9 @@
                                 <VBox spacing="10" styleClass="card">
                                     <children>
                                         <Label text="Available Assets"/>
-                                        <Label fx:id="lblAvailableAssets" text="0" styleClass="card-value"/>
+                                        <Label fx:id="lblAvailableAssets"
+                                               text="0"
+                                               styleClass="card-value"/>
                                     </children>
                                 </VBox>
 
@@ -203,7 +204,9 @@
                                 <VBox spacing="10" styleClass="card">
                                     <children>
                                         <Label text="Issued Assets"/>
-                                        <Label fx:id="lblIssuedAssets" text="0" styleClass="card-value"/>
+                                        <Label fx:id="lblIssuedAssets"
+                                               text="0"
+                                               styleClass="card-value"/>
                                     </children>
                                 </VBox>
 
@@ -211,7 +214,9 @@
                                 <VBox spacing="10" styleClass="card">
                                     <children>
                                         <Label text="Waiting Return"/>
-                                        <Label fx:id="lblWaitingReturn" text="0" styleClass="card-value"/>
+                                        <Label fx:id="lblWaitingReturn"
+                                               text="0"
+                                               styleClass="card-value"/>
                                     </children>
                                 </VBox>
 
@@ -226,7 +231,6 @@
             </children>
 
         </StackPane>
-
     </center>
 
 </BorderPane>

@@ -8,6 +8,7 @@ com\mycompany\msr\amis\Equipment$Status.class
 module-info.class
 com\mycompany\msr\amis\OutstandingReportController.class
 com\mycompany\msr\amis\Equipment$Condition.class
+.netbeans_automatic_build
 com\mycompany\msr\amis\Return.class
 com\mycompany\msr\amis\EquipmentListController.class
 com\mycompany\msr\amis\Assignment.class
@@ -18,6 +19,8 @@ com\mycompany\msr\amis\AssignmentListController.class
 com\mycompany\msr\amis\CreateAssignmentController.class
 com\mycompany\msr\amis\ReturnReportController.class
 com\mycompany\msr\amis\InventoryReportController.class
+com\mycompany\msr\amis\UsersController.class
+com\mycompany\msr\amis\User.class
 com\mycompany\msr\amis\DatabaseHandler.class
 com\mycompany\msr\amis\DistributionReportController.class
 com\mycompany\msr\amis\Distribution.class
