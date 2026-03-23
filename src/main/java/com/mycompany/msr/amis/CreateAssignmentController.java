@@ -208,7 +208,10 @@ public class CreateAssignmentController implements Initializable {
         }
 
         String dept = safe(txtDepartment);
-        String type = safe(txtEquipmentType).toUpperCase();
+
+        // ✅ FIXED LINE (removed .toUpperCase())
+        String type = safe(txtEquipmentType);
+
         String qtyText = safe(txtQuantity);
 
         if (person.isEmpty() || type.isEmpty() || qtyText.isEmpty()) {

@@ -68,32 +68,42 @@
                                     <ColumnConstraints percentWidth="70"/>
                                 </columnConstraints>
 
-                                <Label text="Name:" GridPane.rowIndex="0"/>
-                                <TextField fx:id="txtName"
-                                           GridPane.rowIndex="0"
-                                           GridPane.columnIndex="1"/>
+                                <!-- EQUIPMENT (FIXED ROOT ISSUE) -->
+                                <Label text="Select Equipment:" GridPane.rowIndex="0"/>
+                                <ComboBox fx:id="equipmentCombo"
+                                          prefWidth="300"
+                                          GridPane.rowIndex="0"
+                                          GridPane.columnIndex="1"/>
 
-                                <Label text="Phone:" GridPane.rowIndex="1"/>
-                                <TextField fx:id="txtPhone"
+                                <!-- NAME -->
+                                <Label text="Name:" GridPane.rowIndex="1"/>
+                                <TextField fx:id="txtName"
                                            GridPane.rowIndex="1"
                                            GridPane.columnIndex="1"/>
 
-                                <Label text="NID:" GridPane.rowIndex="2"/>
-                                <TextField fx:id="txtNid"
+                                <!-- PHONE -->
+                                <Label text="Phone:" GridPane.rowIndex="2"/>
+                                <TextField fx:id="txtPhone"
                                            GridPane.rowIndex="2"
+                                           GridPane.columnIndex="1"/>
+
+                                <!-- NID -->
+                                <Label text="NID:" GridPane.rowIndex="3"/>
+                                <TextField fx:id="txtNid"
+                                           GridPane.rowIndex="3"
                                            GridPane.columnIndex="1"/>
 
                                 <!-- ADD BUTTON -->
                                 <Button text="Add"
                                         fx:id="btnAdd"
                                         onAction="#addManualAssignment"
-                                        GridPane.rowIndex="3"
+                                        GridPane.rowIndex="4"
                                         GridPane.columnIndex="1"
                                         style="-fx-background-color:#3498db; -fx-text-fill:white;"/>
 
-                                <!-- SAVE + CLEAR MOVED HERE -->
+                                <!-- SAVE + CLEAR -->
                                 <HBox spacing="10"
-                                      GridPane.rowIndex="4"
+                                      GridPane.rowIndex="5"
                                       GridPane.columnIndex="1">
 
                                     <Button text="Save"
@@ -177,8 +187,6 @@
                         </content>
 
                     </TitledPane>
-
-                    <!-- REMOVED GLOBAL ACTIONS (NOW CORRECTLY SCOPED) -->
 
                 </VBox>
 

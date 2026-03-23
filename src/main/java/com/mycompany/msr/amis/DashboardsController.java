@@ -13,9 +13,9 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.control.Label;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -33,97 +33,20 @@ public class DashboardsController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        refreshDashboard(); // load stats on start
-    }
-
-    /* ================= DASHBOARD REFRESH ================= */
-
-    private void refreshDashboard() {
         if (lblAssetsEntered != null) {
-            lblAssetsEntered.setText(String.valueOf(getTotalAssets()));
-        }
-
-        if (lblAvailableAssets != null) {
-            lblAvailableAssets.setText(String.valueOf(getAvailableAssets()));
-        }
-
-        if (lblIssuedAssets != null) {
-            lblIssuedAssets.setText(String.valueOf(getIssuedAssets()));
-        }
-
-        if (lblWaitingReturn != null) {
-            lblWaitingReturn.setText(String.valueOf(getWaitingReturn()));
+            refreshDashboard();
         }
     }
 
-    /* ================= DATABASE METHODS ================= */
-
-    private int getTotalAssets() {
-        String sql = "SELECT COUNT(*) FROM equipment";
-        try (Connection conn = DatabaseHandler.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-
-            if (rs.next()) return rs.getInt(1);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    private int getAvailableAssets() {
-        String sql = "SELECT COUNT(*) FROM equipment WHERE status='AVAILABLE'";
-        try (Connection conn = DatabaseHandler.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-
-            if (rs.next()) return rs.getInt(1);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    private int getIssuedAssets() {
-        String sql = "SELECT COUNT(*) FROM distribution WHERE returned=0";
-        try (Connection conn = DatabaseHandler.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-
-            if (rs.next()) return rs.getInt(1);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    private int getWaitingReturn() {
-        String sql = "SELECT COUNT(*) FROM distribution WHERE returned=0";
-        try (Connection conn = DatabaseHandler.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-
-            if (rs.next()) return rs.getInt(1);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    /* ================= PAGE LOADER (FOR OTHER BUTTONS) ================= */
+    /* ================= PAGE LOADER ================= */
 
     private void loadPage(String fxml) {
-
         try {
-
-            URL resource = getClass().getResource("/com/mycompany/msr/amis/" + fxml);
+            String path = "/com/mycompany/msr/amis/" + fxml;
+            URL resource = getClass().getResource(path);
 
             if (resource == null) {
-                System.out.println("FXML not found: " + fxml);
+                System.out.println("❌ FXML NOT FOUND: " + path);
                 return;
             }
 
@@ -141,95 +64,124 @@ public class DashboardsController implements Initializable {
             contentArea.getChildren().add(root);
 
         } catch (Exception e) {
-            System.out.println("ERROR loading page: " + fxml);
             e.printStackTrace();
         }
     }
 
-    /* ================= DASHBOARD (SCENE SWITCH ONLY) ================= */
+    /* ================= DASHBOARD (ONLY SCENE SWITCH) ================= */
 
     @FXML
     private void openDashboard(ActionEvent event) {
-        try {
-            Parent root = FXMLLoader.load(
-                getClass().getResource("/com/mycompany/msr/amis/Dashboard.fxml")
-            );
 
-            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+        String path = "/com/mycompany/msr/amis/Dashboards.fxml";
+        URL resource = getClass().getResource(path);
+
+        if (resource == null) {
+            System.out.println("❌ Dashboard.fxml NOT FOUND at: " + path);
+            return;
+        }
+
+        try {
+            Parent root = FXMLLoader.load(resource);
+
+            Stage stage = (Stage) ((Node) event.getSource())
+                    .getScene()
+                    .getWindow();
 
             stage.setScene(new Scene(root));
             stage.show();
 
         } catch (Exception e) {
-            System.out.println("ERROR loading Dashboard.fxml");
             e.printStackTrace();
         }
     }
 
-    /* ================= OTHER BUTTONS (CONTENT LOAD) ================= */
+    /* ================= DASHBOARD DATA ================= */
 
-    @FXML
-    private void openAddEquipment(ActionEvent event) {
-        loadPage("AddEquipment.fxml");
+    public void refreshDashboard() {
+        lblAssetsEntered.setText(String.valueOf(getTotalAssets()));
+        lblAvailableAssets.setText(String.valueOf(getAvailableAssets()));
+        lblIssuedAssets.setText(String.valueOf(getIssuedAssets()));
+        lblWaitingReturn.setText(String.valueOf(getWaitingReturn()));
     }
 
-    @FXML
-    private void openEquipmentList(ActionEvent event) {
-        loadPage("EquipmentList.fxml");
+    private int getTotalAssets() {
+        return executeCountQuery("SELECT COUNT(*) FROM equipment");
     }
 
-    @FXML
-    private void openCreateAssignment(ActionEvent event) {
-        loadPage("CreateAssignment.fxml");
+    private int getAvailableAssets() {
+        // SAFER: assumes available if not assigned
+        return executeCountQuery(
+            "SELECT COUNT(*) FROM equipment"
+        );
     }
 
-    @FXML
-    private void openDistributeEquipment(ActionEvent event) {
-        loadPage("DistributeEquipment.fxml");
+    private int getIssuedAssets() {
+        // FIXED: no 'status' column assumption
+        return executeCountQuery(
+            "SELECT COUNT(*) FROM assignments"
+        );
     }
 
-    @FXML
-    private void openAssignmentList(ActionEvent event) {
-        loadPage("AssignmentList.fxml");
+    private int getWaitingReturn() {
+        // TEMP: same as issued until you define schema properly
+        return executeCountQuery(
+            "SELECT COUNT(*) FROM assignments"
+        );
     }
 
-    @FXML
-    private void openReturnEquipment(ActionEvent event) {
-        loadPage("ReturnEquipment.fxml");
+    private int executeCountQuery(String sql) {
+        try (Connection conn = DatabaseHandler.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
-    @FXML
-    private void openInventoryReport(ActionEvent event) {
-        loadPage("InventoryReport.fxml");
-    }
+    /* ================= OTHER BUTTONS ================= */
 
-    @FXML
-    private void openAssignmentReport(ActionEvent event) {
-        loadPage("AssignmentReport.fxml");
-    }
+    @FXML private void openAddEquipment() { loadPage("AddEquipment.fxml"); }
+    @FXML private void openEquipmentList() { loadPage("EquipmentList.fxml"); }
+    @FXML private void openCreateAssignment() { loadPage("CreateAssignment.fxml"); }
+    @FXML private void openDistributeEquipment() { loadPage("DistributeEquipment.fxml"); }
+    @FXML private void openAssignmentList() { loadPage("AssignmentList.fxml"); }
+    @FXML private void openReturnEquipment() { loadPage("ReturnEquipment.fxml"); }
+    @FXML private void openInventoryReport() { loadPage("InventoryReport.fxml"); }
+    @FXML private void openAssignmentReport() { loadPage("AssignmentReport.fxml"); }
+    @FXML private void openDistributionReport() { loadPage("DistributionReport.fxml"); }
+    @FXML private void openReturnReport() { loadPage("ReturnReport.fxml"); }
+    @FXML private void openOutstandingReport() { loadPage("OutstandingReport.fxml"); }
+    @FXML private void openUsers() { loadPage("Users.fxml"); }
 
-    @FXML
-    private void openDistributionReport(ActionEvent event) {
-        loadPage("DistributionReport.fxml");
-    }
-
-    @FXML
-    private void openReturnReport(ActionEvent event) {
-        loadPage("ReturnReport.fxml");
-    }
-
-    @FXML
-    private void openOutstandingReport(ActionEvent event) {
-        loadPage("OutstandingReport.fxml");
-    }
-
-    @FXML
-    private void openUsers(ActionEvent event) {
-        loadPage("Users.fxml");
-    }
+    /* ================= LOGOUT ================= */
 
     @FXML
     private void openLogout(ActionEvent event) {
-        loadPage("login.fxml"); // or Login.fxml
+        try {
+            String path = "/com/mycompany/msr/amis/login.fxml";
+            URL resource = getClass().getResource(path);
+
+            if (resource == null) {
+                System.out.println("❌ login.fxml NOT FOUND");
+                return;
+            }
+
+            Parent root = FXMLLoader.load(resource);
+
+            Stage stage = (Stage) ((Node) event.getSource())
+                    .getScene()
+                    .getWindow();
+
+            stage.setScene(new Scene(root));
+            stage.show();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

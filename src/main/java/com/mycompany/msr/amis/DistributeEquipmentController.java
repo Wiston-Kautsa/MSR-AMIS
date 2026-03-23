@@ -7,23 +7,17 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
 import java.io.File;
-import java.io.FileInputStream;
 import java.net.URL;
 import java.time.LocalDate;
 import java.util.*;
-
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.CellType;
 
 public class DistributeEquipmentController implements Initializable {
 
     // ================= UI =================
     @FXML private ComboBox<String> cmbAssignments;
+    @FXML private ComboBox<String> equipmentCombo; // ✅ FIXED
+
     @FXML private Label lblProgress;
     @FXML private Label lblSelectedAssignment;
     @FXML private Label lblAssignmentStats;
@@ -41,24 +35,31 @@ public class DistributeEquipmentController implements Initializable {
 
     @FXML private Button btnSave;
     @FXML private Button btnAdd;
-
+    @FXML private Button btnClear;
 
     // ================= DATA =================
     private ObservableList<Distribution> stagedData = FXCollections.observableArrayList();
     private Map<String, Assignment> assignmentMap = new HashMap<>();
     private Set<String> usedAssets = new HashSet<>();
+    private File selectedFile;
 
     private int requiredQty = 0;
     private Assignment selectedAssignment = null;
-    private File selectedFile;
-    @FXML
-    private Button btnClear;
 
     // ================= INIT =================
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+
         setupTable();
         loadAssignments();
+
+        // Defensive check
+        if (equipmentCombo != null) {
+            loadAvailableEquipment();
+        } else {
+            System.out.println("ERROR: equipmentCombo not injected from FXML");
+        }
+
         btnSave.setDisable(true);
 
         cmbAssignments.setOnAction(e -> loadAssignmentDetails());
@@ -88,6 +89,20 @@ public class DistributeEquipmentController implements Initializable {
         }
     }
 
+    // ================= LOAD EQUIPMENT =================
+    private void loadAvailableEquipment() {
+
+        if (equipmentCombo == null) return;
+
+        equipmentCombo.getItems().clear();
+
+        List<String> equipmentList = DatabaseHandler.getAvailableEquipment();
+
+        if (equipmentList != null) {
+            equipmentCombo.getItems().addAll(equipmentList);
+        }
+    }
+
     // ================= LOAD DETAILS =================
     private void loadAssignmentDetails() {
         selectedAssignment = assignmentMap.get(cmbAssignments.getValue());
@@ -102,7 +117,7 @@ public class DistributeEquipmentController implements Initializable {
         updateProgress();
     }
 
-    // ================= ADD MANUAL =================
+    // ================= ADD =================
     @FXML
     private void addManualAssignment(ActionEvent event) {
 
@@ -116,6 +131,11 @@ public class DistributeEquipmentController implements Initializable {
             return;
         }
 
+        if (equipmentCombo.getValue() == null) {
+            showWarning("Select equipment");
+            return;
+        }
+
         if (txtName.getText().isEmpty() ||
             txtPhone.getText().isEmpty() ||
             txtNid.getText().isEmpty()) {
@@ -124,7 +144,12 @@ public class DistributeEquipmentController implements Initializable {
             return;
         }
 
-        String assetCode = "MANUAL-" + (stagedData.size() + 1);
+        String assetCode = equipmentCombo.getValue();
+
+        if (usedAssets.contains(assetCode)) {
+            showWarning("Equipment already used");
+            return;
+        }
 
         stagedData.add(new Distribution(
                 0,
@@ -146,77 +171,7 @@ public class DistributeEquipmentController implements Initializable {
         txtName.clear();
         txtPhone.clear();
         txtNid.clear();
-    }
-
-    // ================= FILE =================
-    @FXML
-    private void chooseExcelFile(ActionEvent event) {
-
-        FileChooser chooser = new FileChooser();
-        chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
-        );
-
-        selectedFile = chooser.showOpenDialog(null);
-
-        if (selectedFile != null) {
-            lblSelectedFile.setText(selectedFile.getName());
-        }
-    }
-
-    // ================= UPLOAD =================
-    @FXML
-    private void uploadExcel() {
-
-        if (selectedAssignment == null) {
-            showWarning("Select assignment first");
-            return;
-        }
-
-        if (selectedFile == null) {
-            showWarning("Select file first");
-            return;
-        }
-
-        try (Workbook wb = new XSSFWorkbook(new FileInputStream(selectedFile))) {
-
-            Sheet sheet = wb.getSheetAt(0);
-
-            if (sheet.getRow(0).getLastCellNum() < 5) {
-                showError("Invalid Excel format (need 5 columns)");
-                return;
-            }
-
-            stagedData.clear();
-            usedAssets.clear();
-
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-
-                Row r = sheet.getRow(i);
-                if (r == null) continue;
-
-                String asset = getCell(r, 0);
-
-                if (usedAssets.contains(asset)) continue;
-
-                stagedData.add(new Distribution(
-                        0,
-                        asset,
-                        getCell(r, 1),
-                        getCell(r, 2),
-                        getCell(r, 3),
-                        getCell(r, 4),
-                        LocalDate.now()
-                ));
-
-                usedAssets.add(asset);
-            }
-
-            updateProgress();
-
-        } catch (Exception e) {
-            showError("Error reading Excel file");
-        }
+        equipmentCombo.setValue(null);
     }
 
     // ================= SAVE =================
@@ -233,25 +188,30 @@ public class DistributeEquipmentController implements Initializable {
             return;
         }
 
-        // TODO: Save to DB
-        showInfo("Saved successfully (implement DB next)");
-    }
+        try {
+            for (Distribution d : stagedData) {
+                DatabaseHandler.distributeEquipment(
+                        d.getAssetCode(),
+                        selectedAssignment.getId(),
+                        d.getAssignedTo(),
+                        d.getPhone(),
+                        d.getNid()
+                );
+            }
 
-    // ================= UTIL =================
-    private String getCell(Row row, int index) {
+            showInfo("Saved successfully");
 
-        Cell cell = row.getCell(index);
-        if (cell == null) return "";
+            stagedData.clear();
+            usedAssets.clear();
+            updateProgress();
+            loadAvailableEquipment();
 
-        switch (cell.getCellType()) {
-            case STRING: return cell.getStringCellValue().trim();
-            case NUMERIC:
-                double v = cell.getNumericCellValue();
-                return (v == (long) v) ? String.valueOf((long) v) : String.valueOf(v);
-            default: return "";
+        } catch (Exception e) {
+            showError(e.getMessage());
         }
     }
 
+    // ================= PROGRESS =================
     private void updateProgress() {
 
         int entered = stagedData.size();
@@ -281,11 +241,38 @@ public class DistributeEquipmentController implements Initializable {
     private void showError(String msg) {
         new Alert(Alert.AlertType.ERROR, msg).showAndWait();
     }
-    
+
+    // ================= FXML ACTIONS =================
     @FXML
-private void clearForm() {
-    txtName.clear();
-    txtPhone.clear();
-    txtNid.clear();
-}
+    private void clearForm() {
+        clearFields();
+    }
+
+    @FXML
+    private void chooseExcelFile() {
+
+FileChooser fileChooser = new FileChooser();
+    fileChooser.setTitle("Select Excel File");
+
+    fileChooser.getExtensionFilters().add(
+        new FileChooser.ExtensionFilter("Excel Files", "*.xlsx", "*.xls")
+    );
+
+    selectedFile = fileChooser.showOpenDialog(null);
+
+    if (selectedFile != null) {
+        lblSelectedFile.setText(selectedFile.getName());
+    }
+    }
+
+    @FXML
+    private void uploadExcel() {
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Upload");
+        alert.setHeaderText(null);
+        alert.setContentText("Excel upload not implemented yet.");
+        alert.showAndWait();
+    }
+    
 }

@@ -9,14 +9,18 @@ import javafx.stage.FileChooser;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.Cell;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.net.URL;
 import java.time.LocalDate;
 import java.util.ResourceBundle;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class AddEquipmentController implements Initializable {
 
@@ -51,6 +55,8 @@ public class AddEquipmentController implements Initializable {
         cmbCondition.getItems().addAll("New", "Used", "Damaged");
 
         dateEntry.setValue(LocalDate.now());
+
+        loadEquipmentFromDatabase();
     }
 
     // ================= TABLE =================
@@ -60,11 +66,15 @@ public class AddEquipmentController implements Initializable {
         colCategory.setCellValueFactory(cell -> cell.getValue().categoryProperty());
         colSerial.setCellValueFactory(cell -> cell.getValue().serialNumberProperty());
         colCondition.setCellValueFactory(cell -> cell.getValue().conditionProperty());
-
-        // ✅ FIXED (entryDate instead of date)
         colDate.setCellValueFactory(cell -> cell.getValue().entryDateProperty());
 
         equipmentTable.setItems(equipmentList);
+    }
+
+    // ================= LOAD =================
+    private void loadEquipmentFromDatabase() {
+        equipmentList.clear();
+        equipmentList.addAll(DatabaseHandler.getAllEquipment());
     }
 
     // ================= SAVE =================
@@ -90,10 +100,15 @@ public class AddEquipmentController implements Initializable {
                 dateEntry.getValue().toString()
         );
 
-        equipmentList.add(eq);
-
-        clearForm(null);
-        showInfo("Equipment saved successfully");
+        try {
+            DatabaseHandler.insertEquipment(eq);
+            loadEquipmentFromDatabase();
+            showInfo("Equipment saved successfully");
+            clearForm(null);
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Failed to save equipment");
+        }
     }
 
     // ================= CLEAR =================
@@ -139,7 +154,6 @@ public class AddEquipmentController implements Initializable {
 
             Sheet sheet = wb.getSheetAt(0);
 
-            // ✅ VALIDATION
             if (sheet.getRow(0).getLastCellNum() < 6) {
                 showError("Invalid Excel format (must have 6 columns)");
                 return;
@@ -150,19 +164,34 @@ public class AddEquipmentController implements Initializable {
                 Row r = sheet.getRow(i);
                 if (r == null) continue;
 
-                equipmentList.add(new Equipment(
-                        getCell(r, 0),
-                        getCell(r, 1),
-                        getCell(r, 2),
+                String name = getCell(r, 0);
+                String category = getCell(r, 1);
+                String serial = getCell(r, 2);
+
+                // skip empty rows
+                if (name.isEmpty() || category.isEmpty() || serial.isEmpty()) continue;
+
+                Equipment eq = new Equipment(
+                        name,
+                        category,
+                        serial,
                         getCell(r, 3),
                         getCell(r, 4),
                         getCell(r, 5)
-                ));
+                );
+
+                try {
+                    DatabaseHandler.insertEquipment(eq);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
 
-            showInfo("Excel data loaded successfully");
+            loadEquipmentFromDatabase();
+            showInfo("Excel uploaded successfully");
 
         } catch (Exception e) {
+            e.printStackTrace();
             showError("Error reading Excel file");
         }
     }
@@ -173,26 +202,31 @@ public class AddEquipmentController implements Initializable {
         Cell cell = row.getCell(index);
         if (cell == null) return "";
 
-        switch (cell.getCellType()) {
-
-            case STRING:
-                return cell.getStringCellValue().trim();
-
-            case NUMERIC:
-                double v = cell.getNumericCellValue();
-                return (v == (long) v)
-                        ? String.valueOf((long) v)
-                        : String.valueOf(v);
-
-            case BOOLEAN:
-                return String.valueOf(cell.getBooleanCellValue());
-
-            case FORMULA:
-                return cell.getCellFormula();
-
-            default:
-                return "";
+        if (cell.getCellType() == CellType.STRING) {
+            return cell.getStringCellValue().trim();
         }
+
+        if (cell.getCellType() == CellType.NUMERIC) {
+
+            if (DateUtil.isCellDateFormatted(cell)) {
+                return cell.getLocalDateTimeCellValue().toLocalDate().toString();
+            }
+
+            double v = cell.getNumericCellValue();
+            return (v == (long) v)
+                    ? String.valueOf((long) v)
+                    : String.valueOf(v);
+        }
+
+        if (cell.getCellType() == CellType.BOOLEAN) {
+            return String.valueOf(cell.getBooleanCellValue());
+        }
+
+        if (cell.getCellType() == CellType.FORMULA) {
+            return cell.getCellFormula();
+        }
+
+        return "";
     }
 
     // ================= ALERTS =================

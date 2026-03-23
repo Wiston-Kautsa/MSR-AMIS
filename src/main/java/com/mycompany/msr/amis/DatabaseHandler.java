@@ -3,7 +3,6 @@ package com.mycompany.msr.amis;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -25,20 +24,38 @@ public class DatabaseHandler {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
 
+            // EQUIPMENT
             stmt.execute(
                     "CREATE TABLE IF NOT EXISTS equipment (" +
                             "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                            "asset_code TEXT NOT NULL UNIQUE, " +
+                            "asset_code TEXT UNIQUE, " +
                             "name TEXT NOT NULL, " +
-                            "category TEXT, " +
-                            "serial_number TEXT, " +
+                            "category TEXT NOT NULL, " +
+                            "serial_number TEXT UNIQUE NOT NULL, " +
                             "condition TEXT, " +
                             "source TEXT, " +
-                            "entry_date TEXT, " +
-                            "status TEXT CHECK(status IN ('AVAILABLE','ASSIGNED','MAINTENANCE','RETIRED')) DEFAULT 'AVAILABLE'" +
+                            "entry_date TEXT DEFAULT (DATE('now')), " +
+                            "status TEXT DEFAULT 'AVAILABLE' " +
+                            "CHECK(status IN ('AVAILABLE','ASSIGNED','MAINTENANCE','RETIRED'))" +
                     ")"
             );
 
+            // TRIGGER
+            stmt.execute(
+                    "CREATE TRIGGER IF NOT EXISTS generate_asset_code " +
+                            "AFTER INSERT ON equipment " +
+                            "BEGIN " +
+                            "UPDATE equipment SET asset_code = " +
+                            "CASE " +
+                            "WHEN NEW.category = 'Laptop' THEN 'MSR-LTP-' || printf('%03d', NEW.id) " +
+                            "WHEN NEW.category = 'Tablet' THEN 'MSR-TAB-' || printf('%03d', NEW.id) " +
+                            "WHEN NEW.category = 'Phone' THEN 'MSR-PHN-' || printf('%03d', NEW.id) " +
+                            "ELSE 'MSR-OTH-' || printf('%03d', NEW.id) " +
+                            "END WHERE id = NEW.id; " +
+                            "END;"
+            );
+
+            // ASSIGNMENTS
             stmt.execute(
                     "CREATE TABLE IF NOT EXISTS assignments (" +
                             "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -46,42 +63,11 @@ public class DatabaseHandler {
                             "department TEXT, " +
                             "equipment_type TEXT, " +
                             "quantity INTEGER, " +
-                            "date TEXT" +
+                            "date TEXT DEFAULT (DATE('now'))" +
                     ")"
             );
 
-            stmt.execute(
-                    "CREATE TABLE IF NOT EXISTS distribution (" +
-                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                            "asset_code TEXT NOT NULL, " +
-                            "assignment_id INTEGER NOT NULL, " +
-                            "assigned_to TEXT, " +
-                            "phone TEXT, " +
-                            "nid TEXT, " +
-                            "issued_date TEXT, " +
-                            "returned INTEGER DEFAULT 0, " +
-                            "FOREIGN KEY (asset_code) REFERENCES equipment(asset_code), " +
-                            "FOREIGN KEY (assignment_id) REFERENCES assignments(id)" +
-                    ")"
-            );
-
-            stmt.execute(
-                    "CREATE TABLE IF NOT EXISTS returns (" +
-                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                            "asset_code TEXT NOT NULL, " +
-                            "assignment_id INTEGER, " +
-                            "returned_by TEXT, " +
-                            "phone TEXT, " +
-                            "nid TEXT, " +
-                            "condition TEXT, " +
-                            "remarks TEXT, " +
-                            "return_date TEXT, " +
-                            "FOREIGN KEY (asset_code) REFERENCES equipment(asset_code), " +
-                            "FOREIGN KEY (assignment_id) REFERENCES assignments(id)" +
-                    ")"
-            );
-
-            // ✅ USERS TABLE
+            // USERS
             stmt.execute(
                     "CREATE TABLE IF NOT EXISTS users (" +
                             "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -89,15 +75,75 @@ public class DatabaseHandler {
                             "username TEXT UNIQUE NOT NULL, " +
                             "password TEXT NOT NULL, " +
                             "role TEXT DEFAULT 'USER', " +
-                            "phone TEXT UNIQUE, " +     // ✅ FIX
-                            "email TEXT UNIQUE, " +     // ✅ FIX
+                            "phone TEXT UNIQUE, " +
+                            "email TEXT UNIQUE, " +
                             "created_at TEXT DEFAULT CURRENT_TIMESTAMP" +
+                    ")"
+            );
+
+            // ✅ DISTRIBUTION TABLE (correct placement)
+            stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS distribution (" +
+                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                            "asset_code TEXT, " +
+                            "assignment_id INTEGER, " +
+                            "name TEXT, " +
+                            "phone TEXT, " +
+                            "nid TEXT, " +
+                            "date TEXT DEFAULT (DATE('now'))" +
                     ")"
             );
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    // ================= EQUIPMENT =================
+    public static void insertEquipment(Equipment eq) throws Exception {
+
+        String sql = "INSERT INTO equipment " +
+                "(name, category, serial_number, condition, source, entry_date) " +
+                "VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, eq.getName());
+            ps.setString(2, eq.getCategory());
+            ps.setString(3, eq.getSerialNumber());
+            ps.setString(4, eq.getCondition());
+            ps.setString(5, eq.getSource());
+            ps.setString(6, eq.getEntryDate());
+
+            ps.executeUpdate();
+        }
+    }
+
+    public static ObservableList<Equipment> getAllEquipment() {
+
+        ObservableList<Equipment> list = FXCollections.observableArrayList();
+
+        try (Connection conn = getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM equipment")) {
+
+            while (rs.next()) {
+                list.add(new Equipment(
+                        rs.getString("name"),
+                        rs.getString("category"),
+                        rs.getString("serial_number"),
+                        rs.getString("source"),
+                        rs.getString("condition"),
+                        rs.getString("entry_date")
+                ));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
     }
 
     // ================= ASSIGNMENTS =================
@@ -112,23 +158,6 @@ public class DatabaseHandler {
             ps.setString(2, dept);
             ps.setString(3, type);
             ps.setInt(4, qty);
-
-            ps.executeUpdate();
-        }
-    }
-
-    public static void updateAssignment(int id, String person, String dept, String type, int qty) throws Exception {
-
-        String sql = "UPDATE assignments SET person=?, department=?, equipment_type=?, quantity=? WHERE id=?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, person);
-            ps.setString(2, dept);
-            ps.setString(3, type);
-            ps.setInt(4, qty);
-            ps.setInt(5, id);
 
             ps.executeUpdate();
         }
@@ -149,11 +178,10 @@ public class DatabaseHandler {
     public static List<Assignment> getAssignments() {
 
         List<Assignment> list = new ArrayList<>();
-        String sql = "SELECT * FROM assignments ORDER BY id DESC";
 
         try (Connection conn = getConnection();
              Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             ResultSet rs = st.executeQuery("SELECT * FROM assignments")) {
 
             while (rs.next()) {
                 list.add(new Assignment(
@@ -173,39 +201,16 @@ public class DatabaseHandler {
         return list;
     }
 
-    public static boolean isAssignmentLocked(int id) {
-
-        String sql = "SELECT COUNT(*) FROM distribution WHERE assignment_id=?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) return rs.getInt(1) > 0;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
     // ================= USERS =================
-
     public static ObservableList<User> getUsers() {
 
         ObservableList<User> list = FXCollections.observableArrayList();
 
-        String sql = "SELECT * FROM users ORDER BY id DESC";
-
         try (Connection conn = getConnection();
              Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             ResultSet rs = st.executeQuery("SELECT * FROM users")) {
 
             while (rs.next()) {
-
                 list.add(new User(
                         rs.getInt("id"),
                         rs.getString("full_name"),
@@ -243,27 +248,22 @@ public class DatabaseHandler {
         }
     }
 
-    // ✅ NEW VALIDATION METHODS
     public static boolean emailExists(String email) {
-        String sql = "SELECT COUNT(*) FROM users WHERE email=?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, email);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return false;
+        return exists("SELECT COUNT(*) FROM users WHERE email=?", email);
     }
 
     public static boolean phoneExists(String phone) {
-        String sql = "SELECT COUNT(*) FROM users WHERE phone=?";
+        return exists("SELECT COUNT(*) FROM users WHERE phone=?", phone);
+    }
+
+    private static boolean exists(String sql, String value) {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, phone);
+
+            ps.setString(1, value);
             ResultSet rs = ps.executeQuery();
             return rs.next() && rs.getInt(1) > 0;
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -272,10 +272,8 @@ public class DatabaseHandler {
 
     public static void deleteUser(int id) throws Exception {
 
-        String sql = "DELETE FROM users WHERE id=?";
-
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM users WHERE id=?")) {
 
             ps.setInt(1, id);
             ps.executeUpdate();
@@ -287,7 +285,10 @@ public class DatabaseHandler {
 
         int available = 0;
 
-        String sql = "SELECT COUNT(*) FROM equipment WHERE category=? AND status='AVAILABLE'";
+        String sql =
+            "SELECT COUNT(*) FROM equipment e " +
+            "WHERE e.category = ? " +
+            "AND e.asset_code NOT IN (SELECT asset_code FROM distribution)";
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -305,4 +306,58 @@ public class DatabaseHandler {
 
         return available;
     }
+
+    // ================= DISTRIBUTION =================
+    public static void distributeEquipment(String assetCode,
+                                           int assignmentId,
+                                           String name,
+                                           String phone,
+                                           String nid) throws Exception {
+
+        String checkSql = "SELECT COUNT(*) FROM distribution WHERE asset_code = ?";
+        String insertSql = "INSERT INTO distribution (asset_code, assignment_id, name, phone, nid, date) " +
+                           "VALUES (?, ?, ?, ?, ?, DATE('now'))";
+
+        try (Connection conn = getConnection()) {
+
+            PreparedStatement check = conn.prepareStatement(checkSql);
+            check.setString(1, assetCode);
+            ResultSet rs = check.executeQuery();
+
+            if (rs.next() && rs.getInt(1) > 0) {
+                throw new Exception("Equipment already assigned");
+            }
+
+            PreparedStatement ps = conn.prepareStatement(insertSql);
+            ps.setString(1, assetCode);
+            ps.setInt(2, assignmentId);
+            ps.setString(3, name);
+            ps.setString(4, phone);
+            ps.setString(5, nid);
+
+            ps.executeUpdate();
+        }
+    }
+    public static List<String> getAvailableEquipment() {
+
+    List<String> list = new ArrayList<>();
+
+    String sql =
+        "SELECT asset_code FROM equipment " +
+        "WHERE asset_code NOT IN (SELECT asset_code FROM distribution)";
+
+    try (Connection conn = getConnection();
+         Statement st = conn.createStatement();
+         ResultSet rs = st.executeQuery(sql)) {
+
+        while (rs.next()) {
+            list.add(rs.getString("asset_code"));
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    return list;
+}
 }
