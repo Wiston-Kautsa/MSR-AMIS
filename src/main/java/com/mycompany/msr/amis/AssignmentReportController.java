@@ -6,6 +6,8 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 
 import javafx.collections.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -13,68 +15,47 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import java.sql.*;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 
 public class AssignmentReportController implements Initializable {
 
-    @FXML private ComboBox<String> cmbOfficer;
+    @FXML private ComboBox<String> cmbPerson;
     @FXML private ComboBox<String> cmbEquipmentType;
     @FXML private ComboBox<String> cmbStatus;
 
     @FXML private TableView<Assignment> tableAssignments;
 
-    @FXML private TableColumn<Assignment, String> colAssignmentName;
-    @FXML private TableColumn<Assignment, String> colOfficer;
-    @FXML private TableColumn<Assignment, String> colPhone;
-    @FXML private TableColumn<Assignment, String> colNID;
+    @FXML private TableColumn<Assignment, String> colPerson;
+    @FXML private TableColumn<Assignment, String> colDepartment;
     @FXML private TableColumn<Assignment, String> colEquipment;
-    @FXML private TableColumn<Assignment, String> colCategory;
+    @FXML private TableColumn<Assignment, Integer> colQuantity;
     @FXML private TableColumn<Assignment, String> colStatus;
     @FXML private TableColumn<Assignment, String> colDate;
 
-    private ObservableList<Assignment> data = FXCollections.observableArrayList();
+    private final ObservableList<Assignment> data = FXCollections.observableArrayList();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
-        cmbStatus.getItems().addAll("ACTIVE");
+        cmbStatus.getItems().addAll("PENDING", "PARTIAL", "ENROLLED");
 
-        colAssignmentName.setCellValueFactory(new PropertyValueFactory<>("assignmentName"));
-        colOfficer.setCellValueFactory(new PropertyValueFactory<>("officerName"));
-        colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
-        colNID.setCellValueFactory(new PropertyValueFactory<>("nid"));
-        colEquipment.setCellValueFactory(new PropertyValueFactory<>("equipmentName"));
-        colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));
-        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colPerson.setCellValueFactory(new PropertyValueFactory<>("person"));
+        colDepartment.setCellValueFactory(new PropertyValueFactory<>("department"));
+        colEquipment.setCellValueFactory(new PropertyValueFactory<>("equipmentType"));
+        colQuantity.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        colStatus.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(getAssignmentStatus(cell.getValue())));
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
 
+        setupContextMenu();
         loadData();
+        loadFilters();
     }
 
     // ================= LOAD DATA =================
     private void loadData() {
-
         data.clear();
-
-        String sql = "SELECT person, department, equipment_type, date FROM assignments";
-
-        try (Connection conn = DatabaseHandler.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-
-            while (rs.next()) {
-
-                data.add(new Assignment(
-                        rs.getString("person"),          // assignmentName
-                        rs.getString("person"),          // officerName
-                        rs.getString("department"),      // phone
-                        rs.getString("department"),      // nid
-                        rs.getString("equipment_type"),  // equipment
-                        rs.getString("equipment_type"),  // category
-                        "ACTIVE",                        // status
-                        rs.getString("date")
-                ));
-            }
-
+        try {
+            data.addAll(DatabaseHandler.getAssignments());
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Error", "Failed to load data:\n" + e.getMessage());
@@ -83,44 +64,42 @@ public class AssignmentReportController implements Initializable {
         tableAssignments.setItems(data);
     }
 
+    private void loadFilters() {
+        cmbPerson.getItems().clear();
+        cmbEquipmentType.getItems().clear();
+
+        try {
+            for (Assignment assignment : DatabaseHandler.getAssignments()) {
+                addIfMissing(cmbPerson, assignment.getPerson());
+                addIfMissing(cmbEquipmentType, assignment.getEquipmentType());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     // ================= FILTER =================
     @FXML
     private void handleFilter(ActionEvent event) {
-
-        String officer = cmbOfficer.getValue();
+        String person = cmbPerson.getValue();
         String type = cmbEquipmentType.getValue();
+        String status = cmbStatus.getValue();
 
         data.clear();
 
-        String sql = "SELECT person, department, equipment_type, date FROM assignments WHERE 1=1";
-
-        if (officer != null) sql += " AND LOWER(person) LIKE LOWER(?)";
-        if (type != null) sql += " AND LOWER(equipment_type) LIKE LOWER(?)";
-
-        try (Connection conn = DatabaseHandler.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            int index = 1;
-
-            if (officer != null) ps.setString(index++, "%" + officer + "%");
-            if (type != null) ps.setString(index++, "%" + type + "%");
-
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-
-                data.add(new Assignment(
-                        rs.getString("person"),
-                        rs.getString("person"),
-                        rs.getString("department"),
-                        rs.getString("department"),
-                        rs.getString("equipment_type"),
-                        rs.getString("equipment_type"),
-                        "ACTIVE",
-                        rs.getString("date")
-                ));
+        try {
+            for (Assignment assignment : DatabaseHandler.getAssignments()) {
+                if (!matchesFilter(assignment.getPerson(), person)) {
+                    continue;
+                }
+                if (!matchesFilter(assignment.getEquipmentType(), type)) {
+                    continue;
+                }
+                if (!matchesFilter(getAssignmentStatus(assignment), status)) {
+                    continue;
+                }
+                data.add(assignment);
             }
-
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Error", "Filter failed:\n" + e.getMessage());
@@ -130,14 +109,13 @@ public class AssignmentReportController implements Initializable {
     }
 
     // ================= REFRESH =================
-    @FXML
-    private void handleRefresh(ActionEvent event) {
-
-        cmbOfficer.setValue(null);
+    private void handleRefresh() {
+        cmbPerson.setValue(null);
         cmbEquipmentType.setValue(null);
         cmbStatus.setValue(null);
-
         loadData();
+        loadFilters();
+        showAlert("Refresh", "Assignment report refreshed successfully.");
     }
 
     // ================= EXPORT =================
@@ -149,39 +127,75 @@ public class AssignmentReportController implements Initializable {
             return;
         }
 
-        try {
-            String downloads = System.getProperty("user.home") + "/Downloads";
-            File folder = new File(downloads, "MSR-AMIS");
+        File file = FileLocationHelper.fileInDownloads("assignment_report.csv");
+        OperationFeedbackHelper.showInfo(
+                "Export Starting",
+                "Preparing assignment report export.\n\nRows to export: " + data.size()
+        );
 
-            if (!folder.exists()) folder.mkdirs();
+        try (FileWriter writer = new FileWriter(file)) {
 
-            File file = new File(folder, "assignment_report.csv");
-
-            FileWriter writer = new FileWriter(file);
-
-            writer.append("Assignment,Officer,Phone,NID,Equipment,Category,Status,Date\n");
+            writer.append("Responsible Person,Department,Equipment,Quantity,Status,Date\n");
 
             for (Assignment a : data) {
-                writer.append(a.getAssignmentName()).append(",")
-                      .append(a.getOfficerName()).append(",")
-                      .append(a.getPhone()).append(",")
-                      .append(a.getNid()).append(",")
-                      .append(a.getEquipmentName()).append(",")
-                      .append(a.getCategory()).append(",")
-                      .append(a.getStatus()).append(",")
-                      .append(a.getDate()).append("\n");
+                writer.append(csvSafe(a.getPerson())).append(",")
+                      .append(csvSafe(a.getDepartment())).append(",")
+                      .append(csvSafe(a.getEquipmentType())).append(",")
+                      .append(String.valueOf(a.getQuantity())).append(",")
+                      .append(csvSafe(getAssignmentStatus(a))).append(",")
+                      .append(csvSafe(a.getDate())).append("\n");
             }
 
-            writer.close();
+            OperationFeedbackHelper.showInfo(
+                    "Export Complete",
+                    "Assignment report exported successfully to:\n" + file.getAbsolutePath()
+            );
 
-            showAlert("Success",
-                    "Export completed successfully.\n\nSaved to:\n" +
-                    file.getAbsolutePath());
-
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
-            showAlert("Error", "Export failed:\n" + e.getMessage());
+            OperationFeedbackHelper.showError(
+                    "Export Failed",
+                    "Assignment report export failed:\n" + e.getMessage()
+            );
         }
+    }
+
+    private String csvSafe(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    private String getAssignmentStatus(Assignment assignment) {
+        int distributed = DatabaseHandler.getDistributedCountForAssignment(assignment.getId());
+        if (distributed <= 0) {
+            return "PENDING";
+        }
+        if (distributed < assignment.getQuantity()) {
+            return "PARTIAL";
+        }
+        return "ENROLLED";
+    }
+
+    private boolean matchesFilter(String value, String filter) {
+        return filter == null || filter.isBlank() || (value != null && value.equalsIgnoreCase(filter));
+    }
+
+    private void addIfMissing(ComboBox<String> comboBox, String value) {
+        if (value == null || value.isBlank() || comboBox.getItems().contains(value)) {
+            return;
+        }
+        comboBox.getItems().add(value);
+    }
+
+    private void setupContextMenu() {
+        ContextMenu menu = new ContextMenu();
+        MenuItem refresh = new MenuItem("Refresh Assignment Report");
+        refresh.setOnAction(event -> handleRefresh());
+        menu.getItems().add(refresh);
+        tableAssignments.setContextMenu(menu);
     }
 
     // ================= ALERT =================

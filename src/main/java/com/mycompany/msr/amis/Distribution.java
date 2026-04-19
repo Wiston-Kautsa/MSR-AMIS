@@ -11,6 +11,7 @@ public class Distribution {
     private final StringProperty assetCode;
     private final StringProperty serialNumber;
     private final StringProperty assignedTo;
+    private final StringProperty responsiblePerson;
     private final StringProperty phone;
     private final StringProperty nid;
     private final ObjectProperty<LocalDate> distributionDate;
@@ -43,6 +44,7 @@ public class Distribution {
         this.assetCode = new SimpleStringProperty(safe(assetCode));
         this.serialNumber = new SimpleStringProperty(safe(serialNumber));
         this.assignedTo = new SimpleStringProperty(safe(assignedTo));
+        this.responsiblePerson = new SimpleStringProperty("");
         this.phone = new SimpleStringProperty(safe(phone));
         this.nid = new SimpleStringProperty(safe(nid));
         this.distributionDate = new SimpleObjectProperty<>(
@@ -79,6 +81,8 @@ public class Distribution {
 
     public String getAssignedTo() { return assignedTo.get(); }
 
+    public String getResponsiblePerson() { return responsiblePerson.get(); }
+
     public String getPhone() { return phone.get(); }
 
     public String getNid() { return nid.get(); }
@@ -107,6 +111,8 @@ public class Distribution {
 
     public void setAssignedTo(String value) { assignedTo.set(safe(value)); }
 
+    public void setResponsiblePerson(String value) { responsiblePerson.set(safe(value)); }
+
     public void setPhone(String value) { phone.set(safe(value)); }
 
     public void setNid(String value) { nid.set(safe(value)); }
@@ -129,6 +135,8 @@ public class Distribution {
 
     public StringProperty assignedToProperty() { return assignedTo; }
 
+    public StringProperty responsiblePersonProperty() { return responsiblePerson; }
+
     public StringProperty phoneProperty() { return phone; }
 
     public StringProperty nidProperty() { return nid; }
@@ -148,6 +156,7 @@ public class Distribution {
                 ", assetCode='" + getAssetCode() + '\'' +
                 ", serialNumber='" + getSerialNumber() + '\'' +
                 ", assignedTo='" + getAssignedTo() + '\'' +
+                ", responsiblePerson='" + getResponsiblePerson() + '\'' +
                 ", phone='" + getPhone() + '\'' +
                 ", nid='" + getNid() + '\'' +
                 ", assignmentId=" + getAssignmentId() +

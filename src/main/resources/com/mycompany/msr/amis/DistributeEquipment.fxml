@@ -54,7 +54,7 @@
                     </TitledPane>
 
                     <!-- ================= MANUAL ENTRY ================= -->
-                    <TitledPane text="Manual Entry" expanded="true">
+                    <TitledPane fx:id="manualEntryPane" text="Manual Entry" expanded="true">
 
                         <content>
 
@@ -125,7 +125,7 @@
                     </TitledPane>
 
                     <!-- ================= BULK IMPORT ================= -->
-                    <TitledPane text="Bulk Import (Excel)" expanded="true">
+                    <TitledPane fx:id="bulkImportPane" text="Bulk Import (Excel)" expanded="true">
 
                         <content>
 
@@ -139,6 +139,9 @@
                                        style="-fx-text-fill: gray;"/>
 
                                 <HBox spacing="10">
+
+                                    <Button text="Download Template"
+                                            onAction="#downloadTemplate"/>
 
                                     <Button text="Choose File"
                                             onAction="#chooseExcelFile"/>

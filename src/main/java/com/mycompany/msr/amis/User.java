@@ -1,6 +1,9 @@
 package com.mycompany.msr.amis;
 
-import javafx.beans.property.*;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 
 public class User {
 
@@ -9,12 +12,12 @@ public class User {
     private final StringProperty username;
     private final StringProperty password;
     private final StringProperty role;
+    private final StringProperty department;
     private final StringProperty phone;
     private final StringProperty email;
 
-    // ================= CONSTRUCTOR =================
     public User(int id, String fullName, String username,
-                String password, String role,
+                String password, String role, String department,
                 String phone, String email) {
 
         this.id = new SimpleIntegerProperty(id);
@@ -22,11 +25,11 @@ public class User {
         this.username = new SimpleStringProperty(username);
         this.password = new SimpleStringProperty(password);
         this.role = new SimpleStringProperty(role);
+        this.department = new SimpleStringProperty(department);
         this.phone = new SimpleStringProperty(phone);
         this.email = new SimpleStringProperty(email);
     }
 
-    // ================= GETTERS =================
     public int getId() {
         return id.get();
     }
@@ -47,6 +50,10 @@ public class User {
         return role.get();
     }
 
+    public String getDepartment() {
+        return department.get();
+    }
+
     public String getPhone() {
         return phone.get();
     }
@@ -55,7 +62,6 @@ public class User {
         return email.get();
     }
 
-    // ================= PROPERTY METHODS =================
     public IntegerProperty idProperty() {
         return id;
     }
@@ -76,6 +82,10 @@ public class User {
         return role;
     }
 
+    public StringProperty departmentProperty() {
+        return department;
+    }
+
     public StringProperty phoneProperty() {
         return phone;
     }
@@ -84,7 +94,6 @@ public class User {
         return email;
     }
 
-    // ================= SETTERS =================
     public void setFullName(String value) {
         fullName.set(value);
     }
@@ -101,6 +110,10 @@ public class User {
         role.set(value);
     }
 
+    public void setDepartment(String value) {
+        department.set(value);
+    }
+
     public void setPhone(String value) {
         phone.set(value);
     }
@@ -109,7 +122,6 @@ public class User {
         email.set(value);
     }
 
-    // ================= DEBUG =================
     @Override
     public String toString() {
         return "User{" +
@@ -117,7 +129,7 @@ public class User {
                 ", fullName='" + getFullName() + '\'' +
                 ", username='" + getUsername() + '\'' +
                 ", role='" + getRole() + '\'' +
-                ", phone='" + getPhone() + '\'' +
+                ", department='" + getDepartment() + '\'' +
                 ", email='" + getEmail() + '\'' +
                 '}';
     }

@@ -1,82 +1,103 @@
 package com.mycompany.msr.amis;
 
-import java.net.URL;
-import java.util.ResourceBundle;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
-
-import javafx.collections.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 
-import java.sql.*;
 import java.io.File;
 import java.io.FileWriter;
+import java.net.URL;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ResourceBundle;
 
 public class ReturnReportController implements Initializable {
 
-    @FXML
-    private ComboBox<String> cmbPerson;
-    @FXML
-    private ComboBox<String> cmbCondition;
+    @FXML private ComboBox<String> cmbPerson;
+    @FXML private ComboBox<String> cmbCondition;
 
-    @FXML
-    private TableView<Return> tableReturns;
+    @FXML private TableView<ReturnRecord> tableReturns;
 
-    @FXML
-    private TableColumn<Return, String> colAssetCode;
-    @FXML
-    private TableColumn<Return, String> colReturnedBy;
-    @FXML
-    private TableColumn<Return, String> colPhone;
-    @FXML
-    private TableColumn<Return, String> colNID;
-    @FXML
-    private TableColumn<Return, String> colCondition;
-    @FXML
-    private TableColumn<Return, String> colDate;
+    @FXML private TableColumn<ReturnRecord, String> colAssetCode;
+    @FXML private TableColumn<ReturnRecord, String> colSerialNumber;
+    @FXML private TableColumn<ReturnRecord, String> colEquipmentName;
+    @FXML private TableColumn<ReturnRecord, String> colCategory;
+    @FXML private TableColumn<ReturnRecord, String> colSource;
+    @FXML private TableColumn<ReturnRecord, String> colEntryDate;
+    @FXML private TableColumn<ReturnRecord, String> colReturnedBy;
+    @FXML private TableColumn<ReturnRecord, String> colPhone;
+    @FXML private TableColumn<ReturnRecord, String> colNID;
+    @FXML private TableColumn<ReturnRecord, String> colCondition;
+    @FXML private TableColumn<ReturnRecord, String> colRemarks;
+    @FXML private TableColumn<ReturnRecord, String> colDate;
 
-    private ObservableList<Return> data = FXCollections.observableArrayList();
+    private final ObservableList<ReturnRecord> data = FXCollections.observableArrayList();
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        cmbCondition.getItems().addAll("Good", "Fair", "Damaged", "Faulty", "Lost");
 
-        // Load condition options
-        cmbCondition.getItems().addAll("GOOD", "DAMAGED", "FAULTY");
-
-        // Table bindings
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
+        colSerialNumber.setCellValueFactory(new PropertyValueFactory<>("serialNumber"));
+        colEquipmentName.setCellValueFactory(new PropertyValueFactory<>("equipmentName"));
+        colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));
+        colSource.setCellValueFactory(new PropertyValueFactory<>("source"));
+        colEntryDate.setCellValueFactory(new PropertyValueFactory<>("entryDate"));
         colReturnedBy.setCellValueFactory(new PropertyValueFactory<>("returnedBy"));
         colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
         colNID.setCellValueFactory(new PropertyValueFactory<>("nid"));
-        colCondition.setCellValueFactory(new PropertyValueFactory<>("condition"));
-        colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
+        colCondition.setCellValueFactory(new PropertyValueFactory<>("returnCondition"));
+        colRemarks.setCellValueFactory(new PropertyValueFactory<>("remarks"));
+        colDate.setCellValueFactory(new PropertyValueFactory<>("returnDate"));
 
+        setupContextMenu();
         loadData();
+        loadPeople();
     }
 
-    // ================= LOAD DATA =================
-    private void loadData() {
+    private void loadPeople() {
+        cmbPerson.getItems().clear();
 
+        String sql = "SELECT DISTINCT returned_by FROM returns WHERE returned_by IS NOT NULL AND TRIM(returned_by) <> ''";
+
+        try (Connection conn = DatabaseHandler.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                cmbPerson.getItems().add(rs.getString("returned_by"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadData() {
         data.clear();
 
-        String sql = "SELECT * FROM returns";
+        String sql =
+                "SELECT r.asset_code, e.serial_number, e.name, e.category, e.source, e.entry_date, " +
+                "r.returned_by, r.phone, r.nid, r.condition, r.remarks, r.return_date " +
+                "FROM returns r " +
+                "LEFT JOIN equipment e ON e.asset_code = r.asset_code " +
+                "ORDER BY r.return_date DESC, r.id DESC";
 
         try (Connection conn = DatabaseHandler.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
 
             while (rs.next()) {
-
-                data.add(new Return(
-                        rs.getString("asset_code"),
-                        rs.getString("returned_by"),
-                        rs.getString("phone"),
-                        rs.getString("nid"),
-                        rs.getString("condition"),
-                        rs.getString("return_date")
-                ));
+                data.add(mapRecord(rs));
             }
 
         } catch (Exception e) {
@@ -87,24 +108,29 @@ public class ReturnReportController implements Initializable {
         tableReturns.setItems(data);
     }
 
-    // ================= FILTER =================
     @FXML
     private void handleFilter(ActionEvent event) {
-
         String person = cmbPerson.getValue();
         String condition = cmbCondition.getValue();
 
         data.clear();
 
-        String sql = "SELECT * FROM returns WHERE 1=1";
+        String sql =
+                "SELECT r.asset_code, e.serial_number, e.name, e.category, e.source, e.entry_date, " +
+                "r.returned_by, r.phone, r.nid, r.condition, r.remarks, r.return_date " +
+                "FROM returns r " +
+                "LEFT JOIN equipment e ON e.asset_code = r.asset_code " +
+                "WHERE 1=1";
 
         if (person != null && !person.isEmpty()) {
-            sql += " AND LOWER(returned_by) LIKE LOWER(?)";
+            sql += " AND LOWER(r.returned_by) LIKE LOWER(?)";
         }
 
         if (condition != null && !condition.isEmpty()) {
-            sql += " AND LOWER(condition)=LOWER(?)";
+            sql += " AND LOWER(r.condition)=LOWER(?)";
         }
+
+        sql += " ORDER BY r.return_date DESC, r.id DESC";
 
         try (Connection conn = DatabaseHandler.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -116,21 +142,13 @@ public class ReturnReportController implements Initializable {
             }
 
             if (condition != null && !condition.isEmpty()) {
-                ps.setString(index++, condition);
+                ps.setString(index, condition);
             }
 
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-
-                data.add(new Return(
-                        rs.getString("asset_code"),
-                        rs.getString("returned_by"),
-                        rs.getString("phone"),
-                        rs.getString("nid"),
-                        rs.getString("condition"),
-                        rs.getString("return_date")
-                ));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    data.add(mapRecord(rs));
+                }
             }
 
         } catch (Exception e) {
@@ -141,61 +159,95 @@ public class ReturnReportController implements Initializable {
         tableReturns.setItems(data);
     }
 
-    // ================= REFRESH =================
-    @FXML
-    private void handleRefresh(ActionEvent event) {
-
+    private void handleRefresh() {
         cmbPerson.setValue(null);
         cmbCondition.setValue(null);
-
         loadData();
-
         showAlert("Refresh", "Data refreshed successfully.");
     }
 
-    // ================= EXPORT =================
     @FXML
     private void handleExport(ActionEvent event) {
-
         if (data.isEmpty()) {
             showAlert("No Data", "No return data to export.");
             return;
         }
 
         try {
-            String downloads = System.getProperty("user.home") + "/Downloads";
-            File folder = new File(downloads, "MSR-AMIS");
+            File file = FileLocationHelper.fileInDownloads("return_equipment_list.csv");
+            OperationFeedbackHelper.showInfo(
+                    "Export Starting",
+                    "Preparing return equipment list export.\n\nRows to export: " + data.size()
+            );
 
-            if (!folder.exists()) folder.mkdirs();
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.append("Asset Code,IMEI/Serial Number,Equipment Name,Category,Source,Entry Date,Returned By,Phone,NID,Return Condition,Remarks,Return Date\n");
 
-            File file = new File(folder, "return_report.csv");
-
-            FileWriter writer = new FileWriter(file);
-
-            writer.append("Asset Code,Returned By,Phone,NID,Condition,Date\n");
-
-            for (Return r : data) {
-                writer.append(r.getAssetCode()).append(",")
-                      .append(r.getReturnedBy()).append(",")
-                      .append(r.getPhone()).append(",")
-                      .append(r.getNid()).append(",")
-                      .append(r.getCondition()).append(",")
-                      .append(r.getDate()).append("\n");
+                for (ReturnRecord record : data) {
+                    writer.append(csvSafe(record.getAssetCode())).append(",")
+                            .append(csvSafe(record.getSerialNumber())).append(",")
+                            .append(csvSafe(record.getEquipmentName())).append(",")
+                            .append(csvSafe(record.getCategory())).append(",")
+                            .append(csvSafe(record.getSource())).append(",")
+                            .append(csvSafe(record.getEntryDate())).append(",")
+                            .append(csvSafe(record.getReturnedBy())).append(",")
+                            .append(csvSafe(record.getPhone())).append(",")
+                            .append(csvSafe(record.getNid())).append(",")
+                            .append(csvSafe(record.getReturnCondition())).append(",")
+                            .append(csvSafe(record.getRemarks())).append(",")
+                            .append(csvSafe(record.getReturnDate())).append("\n");
+                }
             }
 
-            writer.close();
-
-            showAlert("Success",
-                    "Export completed successfully.\nSaved to:\n" +
-                    file.getAbsolutePath());
+            OperationFeedbackHelper.showInfo(
+                    "Export Complete",
+                    "Return equipment list exported successfully to:\n" + file.getAbsolutePath()
+            );
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert("Error", "Export failed:\n" + e.getMessage());
+            OperationFeedbackHelper.showError(
+                    "Export Failed",
+                    "Return equipment list export failed:\n" + e.getMessage()
+            );
         }
     }
 
-    // ================= ALERT =================
+    private ReturnRecord mapRecord(ResultSet rs) throws Exception {
+        return new ReturnRecord(
+                rs.getString("asset_code"),
+                rs.getString("serial_number"),
+                rs.getString("name"),
+                rs.getString("category"),
+                rs.getString("source"),
+                rs.getString("entry_date"),
+                rs.getString("returned_by"),
+                rs.getString("phone"),
+                rs.getString("nid"),
+                rs.getString("condition"),
+                rs.getString("remarks"),
+                rs.getString("return_date")
+        );
+    }
+
+    private String csvSafe(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    private void setupContextMenu() {
+        ContextMenu menu = new ContextMenu();
+        MenuItem refresh = new MenuItem("Refresh Return Equipment List");
+        refresh.setOnAction(event -> handleRefresh());
+        menu.getItems().add(refresh);
+        tableReturns.setContextMenu(menu);
+    }
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);

@@ -37,9 +37,6 @@
             <Button text="Filter"
                     onAction="#handleFilter"/>
 
-            <Button text="Refresh"
-                    onAction="#handleRefresh"/>
-
             <Region HBox.hgrow="ALWAYS"/>
 
             <!-- EXPORT BUTTON -->
@@ -54,13 +51,13 @@
 
             <columns>
 
-                <TableColumn fx:id="colAssetCode" text="Asset Code"/>
+                <TableColumn fx:id="colAssetCode" text="System Serial No."/>
 
                 <TableColumn fx:id="colName" text="Name"/>
 
                 <TableColumn fx:id="colCategory" text="Category"/>
 
-                <TableColumn fx:id="colSerial" text="Serial No"/>
+                <TableColumn fx:id="colSerial" text="IMEI/Serial Number"/>
 
                 <TableColumn fx:id="colCondition" text="Condition"/>
 

@@ -1,99 +1,267 @@
 package com.mycompany.msr.amis;
 
 import java.net.URL;
+import java.util.Optional;
 import java.util.ResourceBundle;
-
+import javafx.beans.binding.Bindings;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
 
 public class UsersController implements Initializable {
+    private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+
 
     @FXML private TextField txtName;
-    @FXML private TextField txtUsername;
-    @FXML private TextField txtPhone;
     @FXML private PasswordField txtPassword;
     @FXML private ComboBox<String> cmbRole;
+    @FXML private ComboBox<String> cmbDepartment;
     @FXML private TextField txtEmail;
+    @FXML private Label lblUserStatus;
 
     @FXML private TableView<User> tableUsers;
 
     @FXML private TableColumn<User, Integer> colId;
     @FXML private TableColumn<User, String> colName;
-    @FXML private TableColumn<User, String> colUsername;
     @FXML private TableColumn<User, String> colRole;
-    @FXML private TableColumn<User, String> colPhone;
+    @FXML private TableColumn<User, String> colDepartment;
     @FXML private TableColumn<User, String> colEmail;
 
     private ObservableList<User> data;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-
         cmbRole.getItems().addAll("ADMIN", "USER");
+        loadDepartments();
 
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colName.setCellValueFactory(new PropertyValueFactory<>("fullName"));
-        colUsername.setCellValueFactory(new PropertyValueFactory<>("username"));
         colRole.setCellValueFactory(new PropertyValueFactory<>("role"));
-        colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
+        colDepartment.setCellValueFactory(new PropertyValueFactory<>("department"));
         colEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
 
+        setupUsersTableMenu();
         loadUsers();
     }
 
-    // ================= LOAD USERS =================
+    private void setupUsersTableMenu() {
+        if (tableUsers == null) {
+            return;
+        }
+
+        tableUsers.setRowFactory(tv -> {
+            TableRow<User> row = new TableRow<>();
+            ContextMenu menu = new ContextMenu();
+
+            MenuItem edit = new MenuItem("Edit User");
+            edit.setOnAction(e -> editUser(row.getItem()));
+
+            MenuItem delete = new MenuItem("Delete User");
+            delete.setOnAction(e -> deleteUser(row.getItem()));
+
+            MenuItem refresh = new MenuItem("Refresh Users");
+            refresh.setOnAction(e -> refreshUsers());
+
+            menu.getItems().addAll(edit, delete, refresh);
+
+            row.contextMenuProperty().bind(
+                    Bindings.when(row.emptyProperty())
+                            .then((ContextMenu) null)
+                            .otherwise(menu)
+            );
+
+            return row;
+        });
+    }
+
     private void loadUsers() {
         data = DatabaseHandler.getUsers();
-
-        // ✔ FIX: force refresh
         tableUsers.setItems(null);
         tableUsers.setItems(data);
     }
 
-    // ================= ADD USER =================
+    private void loadDepartments() {
+        if (cmbDepartment == null) {
+            return;
+        }
+        cmbDepartment.getItems().clear();
+        cmbDepartment.getItems().addAll(DatabaseHandler.getDepartments());
+        cmbDepartment.setEditable(true);
+    }
+
     @FXML
     private void handleAddUser(ActionEvent event) {
-
         String name = txtName.getText().trim();
-        String username = txtUsername.getText().trim();
+        String email = txtEmail.getText().trim().toLowerCase();
         String password = txtPassword.getText().trim();
-
-        // ✔ FIX: avoid null
         String role = cmbRole.getValue() != null ? cmbRole.getValue() : "USER";
+        String department = comboText(cmbDepartment);
 
-        String phone = txtPhone.getText().trim();
-        String email = txtEmail.getText().trim();
+        if (name.isEmpty() || email.isEmpty() || password.isEmpty() || department.isEmpty()) {
+            showAlert("Error", "Please fill full name, department, email, and password.");
+            return;
+        }
 
-        if (name.isEmpty() || username.isEmpty() || password.isEmpty()) {
-            showAlert("Error", "Please fill all required fields.");
+        if (!email.matches(EMAIL_PATTERN)) {
+            showAlert("Error", "Enter a valid email address.");
+            return;
+        }
+
+        if (DatabaseHandler.emailExists(email)) {
+            showAlert("Error", "Email already exists. Use a different email.");
             return;
         }
 
         try {
-            DatabaseHandler.insertUser(name, username, password, role, phone, email);
+            String hashedPassword = PasswordUtils.hash(password);
+            DatabaseHandler.insertUser(name, hashedPassword, role, department, email);
 
             clearForm();
+            loadDepartments();
             loadUsers();
+            showStatus("User information added successfully.");
 
             showAlert("Success", "User added successfully.");
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert("Error", "Username already exists or invalid input.");
+            showAlert("Error", "User creation failed.");
         }
     }
 
-    // ================= DELETE USER =================
     @FXML
     private void handleDeleteUser(ActionEvent event) {
+        deleteUser(tableUsers.getSelectionModel().getSelectedItem());
+    }
 
-        User selected = tableUsers.getSelectionModel().getSelectedItem();
+    @FXML
+    private void handleRefreshUsers(ActionEvent event) {
+        refreshUsers();
+    }
 
+    @FXML
+    private void handleEditUser(ActionEvent event) {
+        editUser(tableUsers.getSelectionModel().getSelectedItem());
+    }
+
+    private void editUser(User selected) {
+        if (selected == null) {
+            showAlert("Error", "Select a user first.");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Edit User");
+
+        TextField nameField = new TextField(selected.getFullName());
+        TextField emailField = new TextField(selected.getEmail());
+        ComboBox<String> roleField = new ComboBox<>();
+        roleField.getItems().addAll("ADMIN", "USER");
+        roleField.setValue(selected.getRole());
+        ComboBox<String> departmentField = new ComboBox<>();
+        departmentField.getItems().addAll(DatabaseHandler.getDepartments());
+        departmentField.setEditable(true);
+        departmentField.getEditor().setText(selected.getDepartment());
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Leave blank to keep current password");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        grid.add(new Label("Full Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("Email:"), 0, 1);
+        grid.add(emailField, 1, 1);
+        grid.add(new Label("Role:"), 0, 2);
+        grid.add(roleField, 1, 2);
+        grid.add(new Label("Department:"), 0, 3);
+        grid.add(departmentField, 1, 3);
+        grid.add(new Label("New Password:"), 0, 4);
+        grid.add(passwordField, 1, 4);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(
+                new ButtonType("Save", ButtonBar.ButtonData.OK_DONE),
+                ButtonType.CANCEL
+        );
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) {
+            return;
+        }
+
+        String name = nameField.getText().trim();
+        String email = emailField.getText().trim().toLowerCase();
+        String role = roleField.getValue() != null ? roleField.getValue() : "USER";
+        String department = comboText(departmentField);
+        String password = passwordField.getText().trim();
+
+        if (name.isEmpty() || email.isEmpty() || department.isEmpty()) {
+            showAlert("Error", "Full name, department, and email are required.");
+            return;
+        }
+
+        if (!email.matches(EMAIL_PATTERN)) {
+            showAlert("Error", "Enter a valid email address.");
+            return;
+        }
+
+        if (DatabaseHandler.emailExistsForOtherUser(email, selected.getId())) {
+            showAlert("Error", "Email already exists. Use a different email.");
+            return;
+        }
+
+        try {
+            // Save must read the current dialog values, update the database-backed record by ID,
+            // then reload the table so the user sees the persisted result instead of a UI-only edit.
+            System.out.println("Updating user:");
+            System.out.println("ID: " + selected.getId());
+            System.out.println("Full Name: " + name);
+            System.out.println("Email: " + email);
+            System.out.println("Role: " + role);
+            System.out.println("Department: " + department);
+            System.out.println("Password entered: " + !password.isBlank());
+
+            String hashedPassword = password.isEmpty() ? "" : PasswordUtils.hash(password);
+            boolean updated = DatabaseHandler.updateUser(selected.getId(), name, hashedPassword, role, department, email);
+            System.out.println("Update success: " + updated);
+
+            if (!updated) {
+                showAlert("Error", "User was not updated.");
+                return;
+            }
+
+            loadDepartments();
+            loadUsers();
+            selectUserById(selected.getId());
+            showStatus("User information has been edited successfully.");
+            showAlert("Success", "User updated successfully.");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Error", "User update failed.");
+        }
+    }
+
+    private void deleteUser(User selected) {
         if (selected == null) {
             showAlert("Error", "Select a user first.");
             return;
@@ -102,7 +270,9 @@ public class UsersController implements Initializable {
         try {
             DatabaseHandler.deleteUser(selected.getId());
             loadUsers();
-
+            loadDepartments();
+            tableUsers.getSelectionModel().clearSelection();
+            showStatus("User information deleted successfully.");
             showAlert("Success", "User deleted successfully.");
 
         } catch (Exception e) {
@@ -111,17 +281,22 @@ public class UsersController implements Initializable {
         }
     }
 
-    // ================= CLEAR FORM =================
-    private void clearForm() {
-        txtName.clear();
-        txtUsername.clear();
-        txtPassword.clear();
-        txtPhone.clear();
-        txtEmail.clear();
-        cmbRole.setValue(null);
+    private void refreshUsers() {
+        loadDepartments();
+        loadUsers();
+        tableUsers.getSelectionModel().clearSelection();
+        showStatus("Users and departments refreshed.");
     }
 
-    // ================= ALERT =================
+    private void clearForm() {
+        txtName.clear();
+        txtPassword.clear();
+        txtEmail.clear();
+        cmbRole.setValue(null);
+        cmbDepartment.setValue(null);
+        cmbDepartment.getEditor().clear();
+    }
+
     private void showAlert(String title, String msg) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -129,4 +304,39 @@ public class UsersController implements Initializable {
         alert.setContentText(msg);
         alert.showAndWait();
     }
+
+    private String comboText(ComboBox<String> comboBox) {
+        if (comboBox == null) {
+            return "";
+        }
+        String editorText = comboBox.getEditor().getText();
+        if (editorText != null && !editorText.isBlank()) {
+            return editorText.trim();
+        }
+        if (comboBox.getValue() != null && !comboBox.getValue().isBlank()) {
+            return comboBox.getValue().trim();
+        }
+        return "";
+    }
+
+    private void showStatus(String message) {
+        if (lblUserStatus != null) {
+            lblUserStatus.setText(message);
+        }
+    }
+
+    private void selectUserById(int userId) {
+        if (tableUsers == null || data == null) {
+            return;
+        }
+
+        for (User user : data) {
+            if (user.getId() == userId) {
+                tableUsers.getSelectionModel().select(user);
+                tableUsers.scrollTo(user);
+                return;
+            }
+        }
+    }
+
 }

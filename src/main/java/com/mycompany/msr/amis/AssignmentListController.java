@@ -1,85 +1,77 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/javafx/FXMLController.java to edit this template
- */
 package com.mycompany.msr.amis;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-
-import javafx.collections.*;
-import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.HBox;
+import javafx.beans.binding.Bindings;
 
 public class AssignmentListController implements Initializable {
 
-    @FXML
-    private TextField txtSearch;
-    @FXML
-    private TableView<?> tableAssignments;
-    @FXML
-    private TableColumn<?, ?> colId;
-    @FXML
-    private TableColumn<?, ?> colPerson;
-    @FXML
-    private TableColumn<?, ?> colDepartment;
-    @FXML
-    private TableColumn<?, ?> colEquipment;
-    @FXML
-    private TableColumn<?, ?> colQty;
-    @FXML
-    private TableColumn<?, ?> colAssigned;
-    @FXML
-    private TableColumn<?, ?> colStatus;
-    @FXML
-    private TableColumn<?, ?> colDate;
-    @FXML
-    private TableColumn<?, ?> colActions;
+    @FXML private TextField txtSearch;
+    @FXML private TableView<Assignment> tableAssignments;
+    @FXML private TableColumn<Assignment, Integer> colId;
+    @FXML private TableColumn<Assignment, String> colPerson;
+    @FXML private TableColumn<Assignment, String> colDepartment;
+    @FXML private TableColumn<Assignment, String> colEquipment;
+    @FXML private TableColumn<Assignment, Integer> colQty;
+    @FXML private TableColumn<Assignment, Integer> colAssigned;
+    @FXML private TableColumn<Assignment, String> colStatus;
+    @FXML private TableColumn<Assignment, String> colDate;
 
-    // ================= DATA =================
     private ObservableList<Assignment> assignmentList = FXCollections.observableArrayList();
 
-    /**
-     * Initializes the controller class.
-     */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
-        // Cast TableView safely
-        TableView<Assignment> table = (TableView<Assignment>) tableAssignments;
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colPerson.setCellValueFactory(new PropertyValueFactory<>("person"));
+        colDepartment.setCellValueFactory(new PropertyValueFactory<>("department"));
+        colEquipment.setCellValueFactory(new PropertyValueFactory<>("equipmentType"));
+        colQty.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
 
-        // Bind columns
-        ((TableColumn<Assignment, Integer>) colId).setCellValueFactory(new PropertyValueFactory<>("id"));
-        ((TableColumn<Assignment, String>) colPerson).setCellValueFactory(new PropertyValueFactory<>("person"));
-        ((TableColumn<Assignment, String>) colDepartment).setCellValueFactory(new PropertyValueFactory<>("department"));
-        ((TableColumn<Assignment, String>) colEquipment).setCellValueFactory(new PropertyValueFactory<>("equipmentType"));
-        ((TableColumn<Assignment, Integer>) colQty).setCellValueFactory(new PropertyValueFactory<>("quantity"));
-        ((TableColumn<Assignment, String>) colDate).setCellValueFactory(new PropertyValueFactory<>("date"));
+        // Show actual distributed count per assignment
+        colAssigned.setCellValueFactory(cell -> {
+            int distributed = DatabaseHandler.getDistributedCountForAssignment(cell.getValue().getId());
+            return new SimpleIntegerProperty(distributed).asObject();
+        });
 
-        // Assigned (default = 0 for now)
-        ((TableColumn<Assignment, Integer>) colAssigned).setCellValueFactory(cell ->
-                new javafx.beans.property.SimpleIntegerProperty(0).asObject()
-        );
+        // Derive status from distributed vs required quantity
+        colStatus.setCellValueFactory(cell -> {
+            Assignment a = cell.getValue();
+            int distributed = DatabaseHandler.getDistributedCountForAssignment(a.getId());
+            String status;
+            if (distributed == 0) {
+                status = "PENDING";
+            } else if (distributed < a.getQuantity()) {
+                status = "PARTIAL";
+            } else {
+                status = "COMPLETE";
+            }
+            return new SimpleStringProperty(status);
+        });
 
-        // Status (default = PENDING)
-        ((TableColumn<Assignment, String>) colStatus).setCellValueFactory(cell ->
-                new javafx.beans.property.SimpleStringProperty("PENDING")
-        );
-
-        table.setItems(assignmentList);
+        tableAssignments.setItems(assignmentList);
 
         loadAssignments();
-        addActionButtons();
+        enableRowMenu();
     }
 
-    // ================= LOAD =================
     private void loadAssignments() {
         try {
             assignmentList.clear();
@@ -89,102 +81,79 @@ public class AssignmentListController implements Initializable {
         }
     }
 
-    // ================= SEARCH =================
     @FXML
     private void searchAssignment(ActionEvent event) {
-
-        TableView<Assignment> table = (TableView<Assignment>) tableAssignments;
 
         String keyword = txtSearch.getText().toLowerCase();
 
         if (keyword.isEmpty()) {
-            table.setItems(assignmentList);
+            tableAssignments.setItems(assignmentList);
             return;
         }
 
         ObservableList<Assignment> filtered = FXCollections.observableArrayList();
 
         for (Assignment a : assignmentList) {
-
             if (a.getPerson().toLowerCase().contains(keyword)
                     || a.getDepartment().toLowerCase().contains(keyword)
                     || a.getEquipmentType().toLowerCase().contains(keyword)) {
-
                 filtered.add(a);
             }
         }
 
-        table.setItems(filtered);
+        tableAssignments.setItems(filtered);
     }
 
-    // ================= REFRESH =================
-    @FXML
-    private void refreshTable(ActionEvent event) {
+    private void refreshTable() {
+        txtSearch.clear();
         loadAssignments();
+        tableAssignments.setItems(assignmentList);
     }
 
-    // ================= ACTION BUTTONS =================
-    private void addActionButtons() {
+    private void enableRowMenu() {
+        tableAssignments.setRowFactory(tv -> {
+            TableRow<Assignment> row = new TableRow<>();
 
-        TableColumn<Assignment, Void> actionsCol = (TableColumn<Assignment, Void>) colActions;
+            ContextMenu menu = new ContextMenu();
+            MenuItem edit = new MenuItem("Edit Assignment");
+            MenuItem delete = new MenuItem("Delete Assignment");
+            MenuItem refresh = new MenuItem("Refresh Assignment List");
 
-        actionsCol.setCellFactory(param -> new TableCell<>() {
+            edit.setOnAction(event -> editAssignment(row.getItem()));
+            delete.setOnAction(event -> deleteAssignment(row.getItem()));
+            refresh.setOnAction(event -> refreshTable());
 
-            private final Button btnEdit = new Button("Edit");
-            private final Button btnDelete = new Button("Delete");
+            menu.getItems().addAll(edit, delete, refresh);
 
-            {
-                btnEdit.setOnAction(event -> {
-                    Assignment a = (Assignment) getTableView().getItems().get(getIndex());
-                    editAssignment(a);
-                });
+            row.contextMenuProperty().bind(
+                    Bindings.when(row.emptyProperty())
+                            .then((ContextMenu) null)
+                            .otherwise(menu)
+            );
 
-                btnDelete.setOnAction(event -> {
-                    Assignment a = (Assignment) getTableView().getItems().get(getIndex());
-                    deleteAssignment(a);
-                });
-            }
-
-            private final HBox pane = new HBox(5, btnEdit, btnDelete);
-
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    setGraphic(pane);
-                }
-            }
+            return row;
         });
     }
 
-    // ================= EDIT =================
     private void editAssignment(Assignment a) {
-
         if (a == null) return;
-
-        showInfo("Edit assignment: " + a.getPerson());
+        showInfo("Edit functionality coming soon for: " + a.getPerson());
     }
 
-    // ================= DELETE =================
     private void deleteAssignment(Assignment a) {
-
         if (a == null) return;
 
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Confirm Delete");
         confirm.setHeaderText(null);
-        confirm.setContentText("Delete this assignment?");
+        confirm.setContentText("Delete assignment for " + a.getPerson() + "?");
 
         confirm.showAndWait().ifPresent(res -> {
             if (res == ButtonType.OK) {
-
                 try {
                     DatabaseHandler.deleteAssignment(a.getId());
                     loadAssignments();
-                    showInfo("Deleted successfully");
+                    showInfo("Deleted successfully.");
                 } catch (Exception e) {
                     showError("Delete Error", e.getMessage());
                 }
@@ -192,7 +161,6 @@ public class AssignmentListController implements Initializable {
         });
     }
 
-    // ================= ALERTS =================
     private void showInfo(String msg) {
         new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
     }
@@ -202,5 +170,4 @@ public class AssignmentListController implements Initializable {
         alert.setTitle(title);
         alert.showAndWait();
     }
-
 }

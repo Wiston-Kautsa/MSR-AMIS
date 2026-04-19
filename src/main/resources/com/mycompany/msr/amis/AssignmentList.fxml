@@ -34,7 +34,6 @@
                        prefWidth="250"/>
 
             <Button text="Search" onAction="#searchAssignment"/>
-            <Button text="Refresh" onAction="#refreshTable"/>
 
         </HBox>
 
@@ -59,9 +58,6 @@
                 <TableColumn fx:id="colStatus" text="Status"/>
 
                 <TableColumn fx:id="colDate" text="Date"/>
-
-                <!-- ACTION COLUMN -->
-                <TableColumn fx:id="colActions" text="Actions"/>
 
             </columns>
 

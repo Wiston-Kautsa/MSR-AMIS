@@ -1,0 +1,7 @@
+.idea/
+target/
+dist/
+dist-test/
+dist-installer-test/
+*.db
+*.sqlite

@@ -1,35 +1,49 @@
 package com.mycompany.msr.amis;
 
+import java.io.IOException;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
 import java.util.ResourceBundle;
-
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-
-import javafx.scene.Parent;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.stage.Stage;
-
+import javafx.scene.chart.PieChart;
+import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.control.Label;
-
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import javafx.stage.Stage;
 
 public class DashboardsController implements Initializable {
 
-    @FXML
-    private StackPane contentArea;
+    @FXML private StackPane contentArea;
 
     @FXML private Label lblAssetsEntered;
     @FXML private Label lblAvailableAssets;
     @FXML private Label lblIssuedAssets;
     @FXML private Label lblWaitingReturn;
+    @FXML private PieChart equipmentPieChart;
+    @FXML private PieChart borrowedPieChart;
+
+    private final List<String> fixedCategories = Arrays.asList(
+            "Laptop",
+            "Tablet",
+            "Phone",
+            "Printer",
+            "Projector",
+            "Power Bank",
+            "Other"
+    );
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -38,15 +52,13 @@ public class DashboardsController implements Initializable {
         }
     }
 
-    /* ================= PAGE LOADER ================= */
-
     private void loadPage(String fxml) {
         try {
             String path = "/com/mycompany/msr/amis/" + fxml;
             URL resource = getClass().getResource(path);
 
             if (resource == null) {
-                System.out.println("❌ FXML NOT FOUND: " + path);
+                System.out.println("FXML not found: " + path);
                 return;
             }
 
@@ -68,16 +80,13 @@ public class DashboardsController implements Initializable {
         }
     }
 
-    /* ================= DASHBOARD (ONLY SCENE SWITCH) ================= */
-
     @FXML
     private void openDashboard(ActionEvent event) {
-
         String path = "/com/mycompany/msr/amis/Dashboards.fxml";
         URL resource = getClass().getResource(path);
 
         if (resource == null) {
-            System.out.println("❌ Dashboard.fxml NOT FOUND at: " + path);
+            System.out.println("Dashboards.fxml not found at: " + path);
             return;
         }
 
@@ -96,13 +105,13 @@ public class DashboardsController implements Initializable {
         }
     }
 
-    /* ================= DASHBOARD DATA ================= */
-
     public void refreshDashboard() {
         lblAssetsEntered.setText(String.valueOf(getTotalAssets()));
         lblAvailableAssets.setText(String.valueOf(getAvailableAssets()));
         lblIssuedAssets.setText(String.valueOf(getIssuedAssets()));
         lblWaitingReturn.setText(String.valueOf(getWaitingReturn()));
+        loadAvailablePieChart();
+        loadBorrowedPieChart();
     }
 
     private int getTotalAssets() {
@@ -110,23 +119,29 @@ public class DashboardsController implements Initializable {
     }
 
     private int getAvailableAssets() {
-        // SAFER: assumes available if not assigned
         return executeCountQuery(
-            "SELECT COUNT(*) FROM equipment"
+                "SELECT COUNT(*) FROM equipment " +
+                        "WHERE asset_code NOT IN (" +
+                        "SELECT asset_code FROM distribution WHERE returned = 0" +
+                        ")"
         );
     }
 
     private int getIssuedAssets() {
-        // FIXED: no 'status' column assumption
         return executeCountQuery(
-            "SELECT COUNT(*) FROM assignments"
+                "SELECT COUNT(DISTINCT e.asset_code) " +
+                        "FROM equipment e " +
+                        "WHERE e.asset_code IN (" +
+                        "SELECT d.asset_code FROM distribution d WHERE d.returned = 0" +
+                        ")"
         );
     }
 
     private int getWaitingReturn() {
-        // TEMP: same as issued until you define schema properly
         return executeCountQuery(
-            "SELECT COUNT(*) FROM assignments"
+                "SELECT COUNT(DISTINCT d.asset_code) " +
+                        "FROM distribution d " +
+                        "WHERE d.returned = 0"
         );
     }
 
@@ -135,7 +150,9 @@ public class DashboardsController implements Initializable {
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
 
-            if (rs.next()) return rs.getInt(1);
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -143,7 +160,79 @@ public class DashboardsController implements Initializable {
         return 0;
     }
 
-    /* ================= OTHER BUTTONS ================= */
+    private void loadAvailablePieChart() {
+        String sql =
+                "SELECT " +
+                        "CASE " +
+                        "WHEN TRIM(COALESCE(e.category, '')) = '' THEN 'Other' " +
+                        "WHEN LOWER(TRIM(e.category)) IN ('other', 'others') THEN 'Other' " +
+                        "ELSE TRIM(e.category) " +
+                        "END AS category, " +
+                        "COUNT(*) AS total " +
+                        "FROM equipment e " +
+                        "WHERE e.asset_code NOT IN (" +
+                        "SELECT asset_code FROM distribution WHERE returned = 0" +
+                        ") " +
+                        "GROUP BY " +
+                        "CASE " +
+                        "WHEN TRIM(COALESCE(e.category, '')) = '' THEN 'Other' " +
+                        "WHEN LOWER(TRIM(e.category)) IN ('other', 'others') THEN 'Other' " +
+                        "ELSE TRIM(e.category) " +
+                        "END " +
+                        "ORDER BY total DESC, category ASC";
+        loadPieChartFromDatabase(equipmentPieChart, sql);
+    }
+
+    private void loadBorrowedPieChart() {
+        String sql =
+                "SELECT " +
+                        "CASE " +
+                        "WHEN TRIM(COALESCE(e.category, '')) = '' THEN 'Other' " +
+                        "WHEN LOWER(TRIM(e.category)) IN ('other', 'others') THEN 'Other' " +
+                        "ELSE TRIM(e.category) " +
+                        "END AS category, " +
+                        "COUNT(*) AS total " +
+                        "FROM distribution d " +
+                        "JOIN equipment e ON e.asset_code = d.asset_code " +
+                        "WHERE d.returned = 0 " +
+                        "GROUP BY " +
+                        "CASE " +
+                        "WHEN TRIM(COALESCE(e.category, '')) = '' THEN 'Other' " +
+                        "WHEN LOWER(TRIM(e.category)) IN ('other', 'others') THEN 'Other' " +
+                        "ELSE TRIM(e.category) " +
+                        "END " +
+                        "ORDER BY total DESC, category ASC";
+        loadPieChartFromDatabase(borrowedPieChart, sql);
+    }
+
+    private void loadPieChartFromDatabase(PieChart chart, String sql) {
+        if (chart == null) {
+            return;
+        }
+
+        ObservableList<PieChart.Data> data = FXCollections.observableArrayList();
+        java.util.Map<String, Integer> dbData = new java.util.HashMap<>();
+
+        try (Connection conn = DatabaseHandler.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                dbData.put(rs.getString("category"), rs.getInt("total"));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        for (String category : fixedCategories) {
+            int count = dbData.getOrDefault(category, 0);
+            data.add(new PieChart.Data(category, count == 0 ? 0.01 : count));
+        }
+
+        chart.setLabelsVisible(true);
+        chart.setData(data);
+    }
 
     @FXML private void openAddEquipment() { loadPage("AddEquipment.fxml"); }
     @FXML private void openEquipmentList() { loadPage("EquipmentList.fxml"); }
@@ -157,30 +246,13 @@ public class DashboardsController implements Initializable {
     @FXML private void openReturnReport() { loadPage("ReturnReport.fxml"); }
     @FXML private void openOutstandingReport() { loadPage("OutstandingReport.fxml"); }
     @FXML private void openUsers() { loadPage("Users.fxml"); }
-
-    /* ================= LOGOUT ================= */
+    @FXML private void openAboutUs() { loadPage("AboutUs.fxml"); }
 
     @FXML
     private void openLogout(ActionEvent event) {
         try {
-            String path = "/com/mycompany/msr/amis/login.fxml";
-            URL resource = getClass().getResource(path);
-
-            if (resource == null) {
-                System.out.println("❌ login.fxml NOT FOUND");
-                return;
-            }
-
-            Parent root = FXMLLoader.load(resource);
-
-            Stage stage = (Stage) ((Node) event.getSource())
-                    .getScene()
-                    .getWindow();
-
-            stage.setScene(new Scene(root));
-            stage.show();
-
-        } catch (Exception e) {
+            App.showLoginPage();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

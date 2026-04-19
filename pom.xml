@@ -95,6 +95,12 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.mycompany.msr.amis.App</mainClass>
+                    <launcher>MSR-AMIS</launcher>
+                    <jlinkImageName>MSR-AMIS-runtime</jlinkImageName>
+                    <jlinkZipName>MSR-AMIS-runtime</jlinkZipName>
+                    <stripDebug>true</stripDebug>
+                    <noHeaderFiles>true</noHeaderFiles>
+                    <noManPages>true</noManPages>
                     <options>
                         <option>--add-modules</option>
                         <option>javafx.controls,javafx.fxml</option>

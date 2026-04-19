@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.net.*?>
+<?import java.net.URL?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
 <AnchorPane prefHeight="600.0" prefWidth="900.0"
+            styleClass="content"
+            xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.mycompany.msr.amis.AssignmentReportController">
 
@@ -12,68 +14,34 @@
         <URL value="@theme.css"/>
     </stylesheets>
 
-    <children>
+    <VBox spacing="15"
+          AnchorPane.topAnchor="10"
+          AnchorPane.bottomAnchor="10"
+          AnchorPane.leftAnchor="10"
+          AnchorPane.rightAnchor="10">
 
-        <!-- ================= TITLE ================= -->
-        <Label text="Assignment Report"
-               layoutX="20" layoutY="20"
-               style="-fx-font-size: 18px; -fx-font-weight: bold;" />
+        <Label text="Assignment Report" styleClass="header-title"/>
 
-        <!-- ================= FILTER SECTION ================= -->
-        <HBox spacing="10" layoutX="20" layoutY="60">
-
-            <ComboBox fx:id="cmbOfficer" promptText="Select Officer" prefWidth="180"/>
+        <HBox spacing="10">
+            <ComboBox fx:id="cmbPerson" promptText="Responsible Person" prefWidth="180"/>
             <ComboBox fx:id="cmbEquipmentType" promptText="Equipment Type" prefWidth="180"/>
             <ComboBox fx:id="cmbStatus" promptText="Status" prefWidth="150"/>
-
             <Button text="Filter" onAction="#handleFilter"/>
-            <Button text="Refresh" onAction="#handleRefresh"/>
+            <Region HBox.hgrow="ALWAYS"/>
             <Button text="Export" onAction="#handleExport"/>
-
         </HBox>
 
-        <!-- ================= TABLE ================= -->
-        <TableView fx:id="tableAssignments"
-                   layoutX="20" layoutY="110"
-                   prefWidth="860" prefHeight="450">
-
+        <TableView fx:id="tableAssignments" VBox.vgrow="ALWAYS">
             <columns>
-
-                <TableColumn fx:id="colAssignmentName"
-                             text="Assignment"
-                             prefWidth="120"/>
-
-                <TableColumn fx:id="colOfficer"
-                             text="Officer"
-                             prefWidth="140"/>
-
-                <TableColumn fx:id="colPhone"
-                             text="Phone"
-                             prefWidth="120"/>
-
-                <TableColumn fx:id="colNID"
-                             text="NID"
-                             prefWidth="140"/>
-
-                <TableColumn fx:id="colEquipment"
-                             text="Equipment"
-                             prefWidth="140"/>
-
-                <TableColumn fx:id="colCategory"
-                             text="Category"
-                             prefWidth="120"/>
-
-                <TableColumn fx:id="colStatus"
-                             text="Status"
-                             prefWidth="120"/>
-
-                <TableColumn fx:id="colDate"
-                             text="Date"
-                             prefWidth="120"/>
-
+                <TableColumn fx:id="colPerson" text="Responsible Person" prefWidth="180"/>
+                <TableColumn fx:id="colDepartment" text="Department" prefWidth="160"/>
+                <TableColumn fx:id="colEquipment" text="Equipment" prefWidth="180"/>
+                <TableColumn fx:id="colQuantity" text="Quantity" prefWidth="100"/>
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+                <TableColumn fx:id="colDate" text="Date" prefWidth="140"/>
             </columns>
-
         </TableView>
 
-    </children>
+    </VBox>
+
 </AnchorPane>

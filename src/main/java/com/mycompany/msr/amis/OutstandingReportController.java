@@ -6,6 +6,8 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 
 import javafx.collections.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -13,6 +15,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import java.sql.*;
 import java.io.File;
 import java.io.FileWriter;
+import java.time.LocalDate;
 
 public class OutstandingReportController implements Initializable {
 
@@ -56,7 +59,33 @@ public class OutstandingReportController implements Initializable {
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
 
+        setupContextMenu();
         loadData();
+        loadPeople();
+    }
+
+    private void loadPeople() {
+        cmbPerson.getItems().clear();
+
+        String sql = "SELECT DISTINCT assigned_to FROM distribution WHERE returned = 0 AND assigned_to IS NOT NULL AND TRIM(assigned_to) <> ''";
+
+        try (Connection conn = DatabaseHandler.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                cmbPerson.getItems().add(rs.getString("assigned_to"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private LocalDate parseDate(String value) {
+        try {
+            return value == null || value.isBlank() ? LocalDate.now() : LocalDate.parse(value);
+        } catch (Exception e) {
+            return LocalDate.now();
+        }
     }
 
     // ================= LOAD DATA =================
@@ -82,7 +111,7 @@ public class OutstandingReportController implements Initializable {
 
                 // ✅ FIXED: pass int directly
                 d.setAssignmentId(rs.getInt("assignment_id"));
-
+                d.setDistributionDate(parseDate(rs.getString("date")));
                 d.setStatus("OUTSTANDING");
 
                 data.add(d);
@@ -131,7 +160,7 @@ public class OutstandingReportController implements Initializable {
 
                 // ✅ FIXED
                 d.setAssignmentId(rs.getInt("assignment_id"));
-
+                d.setDistributionDate(parseDate(rs.getString("date")));
                 d.setStatus("OUTSTANDING");
 
                 data.add(d);
@@ -146,8 +175,7 @@ public class OutstandingReportController implements Initializable {
     }
 
     // ================= REFRESH =================
-    @FXML
-    private void handleRefresh(ActionEvent event) {
+    private void handleRefresh() {
 
         cmbPerson.setValue(null);
         loadData();
@@ -165,12 +193,11 @@ public class OutstandingReportController implements Initializable {
         }
 
         try {
-            String downloads = System.getProperty("user.home") + "/Downloads";
-            File folder = new File(downloads, "MSR-AMIS");
-
-            if (!folder.exists()) folder.mkdirs();
-
-            File file = new File(folder, "outstanding_report.csv");
+            File file = FileLocationHelper.fileInDownloads("outstanding_report.csv");
+            OperationFeedbackHelper.showInfo(
+                    "Export Starting",
+                    "Preparing outstanding report export.\n\nRows to export: " + data.size()
+            );
 
             FileWriter writer = new FileWriter(file);
 
@@ -188,17 +215,29 @@ public class OutstandingReportController implements Initializable {
 
             writer.close();
 
-            showAlert("Success",
-                    "Export completed successfully.\nSaved to:\n" +
-                    file.getAbsolutePath());
+            OperationFeedbackHelper.showInfo(
+                    "Export Complete",
+                    "Outstanding report exported successfully to:\n" + file.getAbsolutePath()
+            );
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert("Error", "Export failed:\n" + e.getMessage());
+            OperationFeedbackHelper.showError(
+                    "Export Failed",
+                    "Outstanding report export failed:\n" + e.getMessage()
+            );
         }
     }
 
     // ================= ALERT =================
+    private void setupContextMenu() {
+        ContextMenu menu = new ContextMenu();
+        MenuItem refresh = new MenuItem("Refresh Outstanding Report");
+        refresh.setOnAction(event -> handleRefresh());
+        menu.getItems().add(refresh);
+        tableOutstanding.setContextMenu(menu);
+    }
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);

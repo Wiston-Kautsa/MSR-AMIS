@@ -1,5 +1,7 @@
 package com.mycompany.msr.amis;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -92,7 +94,9 @@ public class EquipmentListController implements Initializable {
 
         try (Connection conn = DatabaseHandler.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM equipment")) {
+             ResultSet rs = stmt.executeQuery(
+                     "SELECT * FROM equipment ORDER BY entry_date DESC, id DESC"
+             )) {
 
             equipmentList.clear();
 
@@ -132,11 +136,13 @@ public class EquipmentListController implements Initializable {
 
             MenuItem edit = new MenuItem("Edit Equipment");
             MenuItem delete = new MenuItem("Delete Equipment");
+            MenuItem refresh = new MenuItem("Refresh Equipment List");
 
             edit.setOnAction(e -> editEquipment(row.getItem()));
             delete.setOnAction(e -> deleteEquipment(row.getItem()));
+            refresh.setOnAction(e -> refreshEquipmentList());
 
-            menu.getItems().addAll(edit, delete);
+            menu.getItems().addAll(edit, delete, refresh);
 
             row.contextMenuProperty().bind(
                     Bindings.when(row.emptyProperty())
@@ -178,6 +184,60 @@ public class EquipmentListController implements Initializable {
         equipmentTable.setItems(filtered);
     }
 
+    @FXML
+    private void exportEquipmentList(ActionEvent event) {
+
+        ObservableList<Equipment> itemsToExport = equipmentTable.getItems();
+
+        if (itemsToExport == null || itemsToExport.isEmpty()) {
+            showMessage("No Data", "There is no equipment to export.");
+            return;
+        }
+
+        File file = FileLocationHelper.fileInDownloads("equipment_list.csv");
+        OperationFeedbackHelper.showInfo(
+                "Export Starting",
+                "Preparing equipment list export.\n\nRows to export: " + itemsToExport.size()
+        );
+
+        try (FileWriter writer = new FileWriter(file)) {
+            writer.append("System Serial No.,IMEI/Serial Number,Equipment Name,Category,Condition,Source,Status,Entry Date\n");
+
+            for (Equipment equipment : itemsToExport) {
+                writer.append(csvSafe(equipment.getAssetCode())).append(",")
+                        .append(csvSafe(equipment.getSerialNumber())).append(",")
+                        .append(csvSafe(equipment.getName())).append(",")
+                        .append(csvSafe(equipment.getCategory())).append(",")
+                        .append(csvSafe(equipment.getCondition())).append(",")
+                        .append(csvSafe(equipment.getSource())).append(",")
+                        .append(csvSafe(equipment.getStatus())).append(",")
+                        .append(csvSafe(equipment.getEntryDate())).append("\n");
+            }
+
+            OperationFeedbackHelper.showInfo(
+                    "Export Complete",
+                    "Equipment list exported successfully to:\n" + file.getAbsolutePath()
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            OperationFeedbackHelper.showError(
+                    "Export Failed",
+                    "Failed to export the equipment list."
+            );
+        }
+    }
+
+    private void refreshEquipmentList() {
+        txtSearch.clear();
+        loadEquipment();
+
+        OperationFeedbackHelper.showInfo(
+                "Equipment Refreshed",
+                "The equipment list was reloaded successfully."
+        );
+    }
+
     /* =============================
        EDIT EQUIPMENT
     ============================== */
@@ -204,7 +264,7 @@ public class EquipmentListController implements Initializable {
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
 
-        grid.add(new Label("Serial Number:"), 0, 1);
+        grid.add(new Label("IMEI/Serial Number:"), 0, 1);
         grid.add(serialField, 1, 1);
 
         grid.add(new Label("Category:"), 0, 2);
@@ -284,5 +344,15 @@ public class EquipmentListController implements Initializable {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private String csvSafe(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }

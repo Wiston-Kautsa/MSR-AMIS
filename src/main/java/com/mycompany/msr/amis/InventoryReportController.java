@@ -9,12 +9,15 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 
 import javafx.collections.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 
 import java.sql.*;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.File;
 
 public class InventoryReportController implements Initializable {
@@ -66,6 +69,7 @@ public class InventoryReportController implements Initializable {
         colSource.setCellValueFactory(new PropertyValueFactory<>("source"));
         colDate.setCellValueFactory(new PropertyValueFactory<>("entryDate"));
 
+        setupContextMenu();
         loadData();
     }
 
@@ -152,13 +156,13 @@ public class InventoryReportController implements Initializable {
     }
 
     // ================= REFRESH =================
-    @FXML
-    private void handleRefresh(ActionEvent event) {
+    private void handleRefresh() {
 
         cmbCategory.setValue(null);
         cmbStatus.setValue(null);
 
         loadData();
+        showAlert("Refresh", "Inventory report refreshed successfully.");
     }
 
     // ================= EXPORT =================
@@ -170,45 +174,56 @@ public class InventoryReportController implements Initializable {
             return;
         }
 
-        try {
-            // Get Downloads folder
-            String downloadsPath = System.getProperty("user.home") + "/Downloads";
+        File file = FileLocationHelper.fileInDownloads("inventory_report.csv");
+        OperationFeedbackHelper.showInfo(
+                "Export Starting",
+                "Preparing inventory report export.\n\nRows to export: " + data.size()
+        );
 
-            // Create MSR-AMIS folder
-            File folder = new File(downloadsPath, "MSR-AMIS");
-            if (!folder.exists()) {
-                folder.mkdirs();
-            }
+        try (FileWriter writer = new FileWriter(file)) {
 
-            // File name (you can add timestamp later if needed)
-            File file = new File(folder, "inventory_report.csv");
-
-            FileWriter writer = new FileWriter(file);
-
-            writer.append("Asset Code,Name,Category,Serial,Condition,Status,Source,Date\n");
+            writer.append("System Serial No.,Name,Category,IMEI/Serial Number,Condition,Status,Source,Date\n");
 
             for (Equipment e : data) {
-                writer.append(e.getAssetCode()).append(",")
-                      .append(e.getName()).append(",")
-                      .append(e.getCategory()).append(",")
-                      .append(e.getSerialNumber()).append(",")
-                      .append(e.getCondition()).append(",")
-                      .append(e.getStatus()).append(",")
-                      .append(e.getSource()).append(",")
-                      .append(e.getEntryDate()).append("\n");
+                writer.append(csvSafe(e.getAssetCode())).append(",")
+                      .append(csvSafe(e.getName())).append(",")
+                      .append(csvSafe(e.getCategory())).append(",")
+                      .append(csvSafe(e.getSerialNumber())).append(",")
+                      .append(csvSafe(e.getCondition())).append(",")
+                      .append(csvSafe(e.getStatus())).append(",")
+                      .append(csvSafe(e.getSource())).append(",")
+                      .append(csvSafe(e.getEntryDate())).append("\n");
             }
 
-            writer.flush();
-            writer.close();
-
-            showAlert("Success",
-                    "Export completed successfully.\n\nSaved to:\n" +
-                    file.getAbsolutePath());
+            OperationFeedbackHelper.showInfo(
+                    "Export Complete",
+                    "Inventory report exported successfully to:\n" + file.getAbsolutePath()
+            );
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert("Error", "Export failed:\n" + e.getMessage());
+            OperationFeedbackHelper.showError(
+                    "Export Failed",
+                    "Inventory report export failed:\n" + e.getMessage()
+            );
         }
+    }
+
+    // ================= CSV SAFETY =================
+    private String csvSafe(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    private void setupContextMenu() {
+        ContextMenu menu = new ContextMenu();
+        MenuItem refresh = new MenuItem("Refresh Inventory Report");
+        refresh.setOnAction(event -> handleRefresh());
+        menu.getItems().add(refresh);
+        tableInventory.setContextMenu(menu);
     }
 
     // ================= ALERT =================
