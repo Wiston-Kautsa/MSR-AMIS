@@ -286,3 +286,124 @@
 .separator .line{
     -fx-border-color: #95a5a6;
 }
+
+.login-root{
+    -fx-font-family: "Segoe UI";
+    -fx-background-color: linear-gradient(to bottom right, #eef3f8, #dbe5ef);
+}
+
+.login-shell{
+    -fx-background-color: white;
+    -fx-background-radius: 24;
+    -fx-border-radius: 24;
+    -fx-effect: dropshadow(gaussian, rgba(31, 41, 55, 0.16), 28, 0.18, 0, 10);
+}
+
+.login-brand-panel{
+    -fx-background-color: linear-gradient(to bottom right, #0f4c81, #205f92);
+    -fx-background-radius: 24 0 0 24;
+}
+
+.login-card-panel{
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 0 24 24 0;
+}
+
+.login-brand-title{
+    -fx-text-fill: white;
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+}
+
+.login-brand-subtitle{
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+}
+
+.login-brand-description{
+    -fx-text-fill: #e7f0f7;
+    -fx-font-size: 14px;
+    -fx-line-spacing: 3px;
+    -fx-padding: 10 0 0 0;
+}
+
+.login-brand-footnote{
+    -fx-text-fill: #cfe0ee;
+    -fx-font-size: 12px;
+    -fx-padding: 12 0 0 0;
+}
+
+.login-title{
+    -fx-text-fill: #1f2937;
+    -fx-font-size: 25px;
+    -fx-font-weight: bold;
+}
+
+.login-subtitle{
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 13px;
+}
+
+.login-input-label{
+    -fx-text-fill: #374151;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+.login-input{
+    -fx-background-color: #f8fafc;
+    -fx-background-radius: 12;
+    -fx-border-color: #d1d5db;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 0 14 0 14;
+    -fx-font-size: 13px;
+    -fx-text-fill: #111827;
+}
+
+.login-input:focused{
+    -fx-background-color: white;
+    -fx-border-color: #2563eb;
+}
+
+.login-checkbox{
+    -fx-text-fill: #4b5563;
+    -fx-font-size: 12px;
+}
+
+.login-primary-button{
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 12;
+    -fx-padding: 12 20 12 20;
+}
+
+.login-primary-button:hover{
+    -fx-background-color: #1d4ed8;
+}
+
+.login-secondary-button{
+    -fx-background-color: #e5e7eb;
+    -fx-text-fill: #1f2937;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 12;
+    -fx-padding: 10 18 10 18;
+}
+
+.login-secondary-button:hover{
+    -fx-background-color: #d1d5db;
+}
+
+.login-message{
+    -fx-text-fill: #dc2626;
+    -fx-font-size: 12px;
+}
+
+.login-helper{
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 12px;
+}

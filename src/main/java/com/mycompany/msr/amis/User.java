@@ -15,10 +15,11 @@ public class User {
     private final StringProperty department;
     private final StringProperty phone;
     private final StringProperty email;
+    private final StringProperty status;
 
     public User(int id, String fullName, String username,
                 String password, String role, String department,
-                String phone, String email) {
+                String phone, String email, String status) {
 
         this.id = new SimpleIntegerProperty(id);
         this.fullName = new SimpleStringProperty(fullName);
@@ -28,6 +29,7 @@ public class User {
         this.department = new SimpleStringProperty(department);
         this.phone = new SimpleStringProperty(phone);
         this.email = new SimpleStringProperty(email);
+        this.status = new SimpleStringProperty(status);
     }
 
     public int getId() {
@@ -62,6 +64,10 @@ public class User {
         return email.get();
     }
 
+    public String getStatus() {
+        return status.get();
+    }
+
     public IntegerProperty idProperty() {
         return id;
     }
@@ -94,6 +100,10 @@ public class User {
         return email;
     }
 
+    public StringProperty statusProperty() {
+        return status;
+    }
+
     public void setFullName(String value) {
         fullName.set(value);
     }
@@ -122,6 +132,10 @@ public class User {
         email.set(value);
     }
 
+    public void setStatus(String value) {
+        status.set(value);
+    }
+
     @Override
     public String toString() {
         return "User{" +
@@ -131,6 +145,7 @@ public class User {
                 ", role='" + getRole() + '\'' +
                 ", department='" + getDepartment() + '\'' +
                 ", email='" + getEmail() + '\'' +
+                ", status='" + getStatus() + '\'' +
                 '}';
     }
 }

@@ -65,9 +65,9 @@
                                           GridPane.columnIndex="1"/>
 
                                 <!-- SERIAL -->
-                                <Label text="Serial / IMEI:" GridPane.rowIndex="2"/>
+                                <Label text="IMEI/Serial Number:" GridPane.rowIndex="2"/>
                                 <TextField fx:id="txtSerialNumber"
-                                           promptText="IMEI or Serial Number"
+                                           promptText="Enter IMEI or manufacturer serial number"
                                            GridPane.rowIndex="2"
                                            GridPane.columnIndex="1"/>
 
@@ -121,7 +121,7 @@
                                     <Insets top="10" left="10" right="10" bottom="10"/>
                                 </padding>
 
-                                <Label text="Upload Excel file containing equipment list."/>
+                                <Label text="Upload Excel file containing equipment list. Entry date is generated automatically by the system."/>
 
                                 <!-- FILE NAME DISPLAY -->
                                 <Label fx:id="lblSelectedFile"
@@ -129,6 +129,9 @@
                                        style="-fx-text-fill: gray;"/>
 
                                 <HBox spacing="10">
+
+                                    <Button text="Download Template"
+                                            onAction="#downloadTemplate"/>
 
                                     <Button text="Choose Excel File"
                                             onAction="#chooseExcelFile"/>
@@ -165,7 +168,7 @@
                                                  prefWidth="120"/>
 
                                     <TableColumn fx:id="colSerial"
-                                                 text="Serial / IMEI"
+                                                 text="IMEI/Serial Number"
                                                  prefWidth="180"/>
 
                                     <TableColumn fx:id="colCondition"

@@ -28,6 +28,7 @@ public class AssignmentReportController implements Initializable {
     @FXML private TableColumn<Assignment, String> colPerson;
     @FXML private TableColumn<Assignment, String> colDepartment;
     @FXML private TableColumn<Assignment, String> colEquipment;
+    @FXML private TableColumn<Assignment, String> colReason;
     @FXML private TableColumn<Assignment, Integer> colQuantity;
     @FXML private TableColumn<Assignment, String> colStatus;
     @FXML private TableColumn<Assignment, String> colDate;
@@ -42,6 +43,7 @@ public class AssignmentReportController implements Initializable {
         colPerson.setCellValueFactory(new PropertyValueFactory<>("person"));
         colDepartment.setCellValueFactory(new PropertyValueFactory<>("department"));
         colEquipment.setCellValueFactory(new PropertyValueFactory<>("equipmentType"));
+        colReason.setCellValueFactory(new PropertyValueFactory<>("reason"));
         colQuantity.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         colStatus.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(getAssignmentStatus(cell.getValue())));
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
@@ -135,12 +137,13 @@ public class AssignmentReportController implements Initializable {
 
         try (FileWriter writer = new FileWriter(file)) {
 
-            writer.append("Responsible Person,Department,Equipment,Quantity,Status,Date\n");
+            writer.append("Responsible Person,Department,Equipment,Reason,Quantity,Status,Date\n");
 
             for (Assignment a : data) {
                 writer.append(csvSafe(a.getPerson())).append(",")
                       .append(csvSafe(a.getDepartment())).append(",")
                       .append(csvSafe(a.getEquipmentType())).append(",")
+                      .append(csvSafe(a.getReason())).append(",")
                       .append(String.valueOf(a.getQuantity())).append(",")
                       .append(csvSafe(getAssignmentStatus(a))).append(",")
                       .append(csvSafe(a.getDate())).append("\n");

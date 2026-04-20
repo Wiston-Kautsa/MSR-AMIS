@@ -37,9 +37,6 @@
             <Button text="Filter"
                     onAction="#handleFilter"/>
 
-            <Button text="Refresh"
-                    onAction="#handleRefresh"/>
-
             <Region HBox.hgrow="ALWAYS"/>
 
             <!-- EXPORT BUTTON -->
@@ -60,7 +57,7 @@
 
                 <TableColumn fx:id="colCategory" text="Category"/>
 
-                <TableColumn fx:id="colSerial" text="Serial No"/>
+                <TableColumn fx:id="colSerial" text="IMEI/Serial Number"/>
 
                 <TableColumn fx:id="colCondition" text="Condition"/>
 

@@ -51,6 +51,8 @@
 
                 <TableColumn fx:id="colEquipment" text="Equipment"/>
 
+                <TableColumn fx:id="colReason" text="Reason"/>
+
                 <TableColumn fx:id="colQty" text="Qty"/>
 
                 <TableColumn fx:id="colAssigned" text="Assigned"/>

@@ -36,6 +36,7 @@
                 <TableColumn fx:id="colPerson" text="Responsible Person" prefWidth="180"/>
                 <TableColumn fx:id="colDepartment" text="Department" prefWidth="160"/>
                 <TableColumn fx:id="colEquipment" text="Equipment" prefWidth="180"/>
+                <TableColumn fx:id="colReason" text="Reason" prefWidth="220"/>
                 <TableColumn fx:id="colQuantity" text="Quantity" prefWidth="100"/>
                 <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
                 <TableColumn fx:id="colDate" text="Date" prefWidth="140"/>

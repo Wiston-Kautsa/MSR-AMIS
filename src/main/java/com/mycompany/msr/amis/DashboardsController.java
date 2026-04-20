@@ -6,8 +6,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,14 +17,12 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.chart.PieChart;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.stage.Stage;
 
 public class DashboardsController implements Initializable {
 
@@ -32,21 +32,16 @@ public class DashboardsController implements Initializable {
     @FXML private Label lblAvailableAssets;
     @FXML private Label lblIssuedAssets;
     @FXML private Label lblWaitingReturn;
+    @FXML private Button btnUsers;
     @FXML private PieChart equipmentPieChart;
     @FXML private PieChart borrowedPieChart;
 
-    private final List<String> fixedCategories = Arrays.asList(
-            "Laptop",
-            "Tablet",
-            "Phone",
-            "Printer",
-            "Projector",
-            "Power Bank",
-            "Other"
-    );
-
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        if (btnUsers != null) {
+            btnUsers.setManaged(AccessControl.canManageUsers());
+            btnUsers.setVisible(AccessControl.canManageUsers());
+        }
         if (lblAssetsEntered != null) {
             refreshDashboard();
         }
@@ -58,7 +53,7 @@ public class DashboardsController implements Initializable {
             URL resource = getClass().getResource(path);
 
             if (resource == null) {
-                System.out.println("FXML not found: " + path);
+                OperationFeedbackHelper.showError("Navigation Error", "The requested page could not be loaded.");
                 return;
             }
 
@@ -82,25 +77,9 @@ public class DashboardsController implements Initializable {
 
     @FXML
     private void openDashboard(ActionEvent event) {
-        String path = "/com/mycompany/msr/amis/Dashboards.fxml";
-        URL resource = getClass().getResource(path);
-
-        if (resource == null) {
-            System.out.println("Dashboards.fxml not found at: " + path);
-            return;
-        }
-
         try {
-            Parent root = FXMLLoader.load(resource);
-
-            Stage stage = (Stage) ((Node) event.getSource())
-                    .getScene()
-                    .getWindow();
-
-            stage.setScene(new Scene(root));
-            stage.show();
-
-        } catch (Exception e) {
+            App.showDashboardPage();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -211,7 +190,7 @@ public class DashboardsController implements Initializable {
         }
 
         ObservableList<PieChart.Data> data = FXCollections.observableArrayList();
-        java.util.Map<String, Integer> dbData = new java.util.HashMap<>();
+        Map<String, Integer> dbData = new java.util.LinkedHashMap<>();
 
         try (Connection conn = DatabaseHandler.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -225,9 +204,17 @@ public class DashboardsController implements Initializable {
             e.printStackTrace();
         }
 
-        for (String category : fixedCategories) {
+        List<String> categories = new ArrayList<>(dbData.keySet());
+        categories.sort(Comparator.naturalOrder());
+
+        if (categories.isEmpty()) {
+            chart.setData(FXCollections.observableArrayList());
+            return;
+        }
+
+        for (String category : categories) {
             int count = dbData.getOrDefault(category, 0);
-            data.add(new PieChart.Data(category, count == 0 ? 0.01 : count));
+            data.add(new PieChart.Data(category, count));
         }
 
         chart.setLabelsVisible(true);
@@ -243,14 +230,24 @@ public class DashboardsController implements Initializable {
     @FXML private void openInventoryReport() { loadPage("InventoryReport.fxml"); }
     @FXML private void openAssignmentReport() { loadPage("AssignmentReport.fxml"); }
     @FXML private void openDistributionReport() { loadPage("DistributionReport.fxml"); }
+    @FXML private void openAssetHistory() { loadPage("AssetHistory.fxml"); }
+    @FXML private void openReturnEquipmentList() { loadPage("ReturnEquipmentList.fxml"); }
     @FXML private void openReturnReport() { loadPage("ReturnReport.fxml"); }
     @FXML private void openOutstandingReport() { loadPage("OutstandingReport.fxml"); }
-    @FXML private void openUsers() { loadPage("Users.fxml"); }
+    @FXML private void openUsers() {
+        try {
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            loadPage("Users.fxml");
+        } catch (SecurityException e) {
+            OperationFeedbackHelper.showError("Access Denied", e.getMessage());
+        }
+    }
     @FXML private void openAboutUs() { loadPage("AboutUs.fxml"); }
 
     @FXML
     private void openLogout(ActionEvent event) {
         try {
+            Session.clear();
             App.showLoginPage();
         } catch (IOException e) {
             e.printStackTrace();

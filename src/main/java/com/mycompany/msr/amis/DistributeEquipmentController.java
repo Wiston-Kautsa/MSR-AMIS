@@ -82,8 +82,6 @@ public class DistributeEquipmentController implements Initializable {
 
         if (equipmentCombo != null) {
             loadAvailableEquipment();
-        } else {
-            System.out.println("ERROR: equipmentCombo not injected from FXML");
         }
 
         loadCurrentDistributions();

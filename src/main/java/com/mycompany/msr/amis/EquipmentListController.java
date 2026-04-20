@@ -279,27 +279,19 @@ public class EquipmentListController implements Initializable {
         Optional<ButtonType> result = dialog.showAndWait();
 
         if (result.isPresent() && result.get() == ButtonType.OK) {
-
-            try (Connection conn = DatabaseHandler.getConnection()) {
-
-                String sql = "UPDATE equipment SET serial_number=?, name=?, category=?, condition=? WHERE asset_code=?";
-
-                PreparedStatement pst = conn.prepareStatement(sql);
-
-                pst.setString(1, serialField.getText());
-                pst.setString(2, nameField.getText());
-                pst.setString(3, categoryField.getText());
-                pst.setString(4, conditionField.getText());
-                pst.setString(5, equipment.getAssetCode());
-
-                pst.executeUpdate();
-
+            try {
+                DatabaseHandler.updateEquipment(
+                        equipment.getAssetCode(),
+                        serialField.getText(),
+                        nameField.getText(),
+                        categoryField.getText(),
+                        conditionField.getText()
+                );
                 loadEquipment();
-
                 showMessage("Success", "Equipment updated successfully.");
-
             } catch (Exception e) {
                 e.printStackTrace();
+                showMessage("Error", e.getMessage());
             }
         }
     }
@@ -315,21 +307,23 @@ public class EquipmentListController implements Initializable {
             return;
         }
 
-        try (Connection conn = DatabaseHandler.getConnection()) {
+        Alert confirm = new Alert(AlertType.CONFIRMATION);
+        confirm.setTitle("Confirm Delete");
+        confirm.setHeaderText(null);
+        confirm.setContentText("Delete equipment " + equipment.getAssetCode() + "?");
 
-            String sql = "DELETE FROM equipment WHERE asset_code=?";
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) {
+            return;
+        }
 
-            PreparedStatement pst = conn.prepareStatement(sql);
-            pst.setString(1, equipment.getAssetCode());
-
-            pst.executeUpdate();
-
+        try {
+            DatabaseHandler.deleteEquipment(equipment.getAssetCode());
             loadEquipment();
-
             showMessage("Deleted", "Equipment deleted successfully.");
-
         } catch (Exception e) {
             e.printStackTrace();
+            showMessage("Error", e.getMessage());
         }
     }
 

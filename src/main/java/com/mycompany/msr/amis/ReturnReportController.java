@@ -34,7 +34,8 @@ public class ReturnReportController implements Initializable {
     @FXML private TableColumn<ReturnRecord, String> colEquipmentName;
     @FXML private TableColumn<ReturnRecord, String> colCategory;
     @FXML private TableColumn<ReturnRecord, String> colSource;
-    @FXML private TableColumn<ReturnRecord, String> colEntryDate;
+    @FXML private TableColumn<ReturnRecord, String> colDateTaken;
+    @FXML private TableColumn<ReturnRecord, String> colReason;
     @FXML private TableColumn<ReturnRecord, String> colReturnedBy;
     @FXML private TableColumn<ReturnRecord, String> colPhone;
     @FXML private TableColumn<ReturnRecord, String> colNID;
@@ -53,7 +54,8 @@ public class ReturnReportController implements Initializable {
         colEquipmentName.setCellValueFactory(new PropertyValueFactory<>("equipmentName"));
         colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));
         colSource.setCellValueFactory(new PropertyValueFactory<>("source"));
-        colEntryDate.setCellValueFactory(new PropertyValueFactory<>("entryDate"));
+        colDateTaken.setCellValueFactory(new PropertyValueFactory<>("dateTaken"));
+        colReason.setCellValueFactory(new PropertyValueFactory<>("assignmentReason"));
         colReturnedBy.setCellValueFactory(new PropertyValueFactory<>("returnedBy"));
         colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
         colNID.setCellValueFactory(new PropertyValueFactory<>("nid"));
@@ -86,9 +88,14 @@ public class ReturnReportController implements Initializable {
         data.clear();
 
         String sql =
-                "SELECT r.asset_code, e.serial_number, e.name, e.category, e.source, e.entry_date, " +
+                "SELECT r.asset_code, e.serial_number, e.name, e.category, e.source, d.date AS date_taken, " +
+                "a.reason AS assignment_reason, " +
                 "r.returned_by, r.phone, r.nid, r.condition, r.remarks, r.return_date " +
                 "FROM returns r " +
+                "LEFT JOIN distribution d ON d.id = (" +
+                "SELECT d2.id FROM distribution d2 WHERE d2.asset_code = r.asset_code ORDER BY d2.id DESC LIMIT 1" +
+                ") " +
+                "LEFT JOIN assignments a ON a.id = d.assignment_id " +
                 "LEFT JOIN equipment e ON e.asset_code = r.asset_code " +
                 "ORDER BY r.return_date DESC, r.id DESC";
 
@@ -116,9 +123,14 @@ public class ReturnReportController implements Initializable {
         data.clear();
 
         String sql =
-                "SELECT r.asset_code, e.serial_number, e.name, e.category, e.source, e.entry_date, " +
+                "SELECT r.asset_code, e.serial_number, e.name, e.category, e.source, d.date AS date_taken, " +
+                "a.reason AS assignment_reason, " +
                 "r.returned_by, r.phone, r.nid, r.condition, r.remarks, r.return_date " +
                 "FROM returns r " +
+                "LEFT JOIN distribution d ON d.id = (" +
+                "SELECT d2.id FROM distribution d2 WHERE d2.asset_code = r.asset_code ORDER BY d2.id DESC LIMIT 1" +
+                ") " +
+                "LEFT JOIN assignments a ON a.id = d.assignment_id " +
                 "LEFT JOIN equipment e ON e.asset_code = r.asset_code " +
                 "WHERE 1=1";
 
@@ -163,7 +175,7 @@ public class ReturnReportController implements Initializable {
         cmbPerson.setValue(null);
         cmbCondition.setValue(null);
         loadData();
-        showAlert("Refresh", "Data refreshed successfully.");
+        showAlert("Refresh", "Return report refreshed successfully.");
     }
 
     @FXML
@@ -174,14 +186,14 @@ public class ReturnReportController implements Initializable {
         }
 
         try {
-            File file = FileLocationHelper.fileInDownloads("return_equipment_list.csv");
+            File file = FileLocationHelper.fileInDownloads("return_report.csv");
             OperationFeedbackHelper.showInfo(
                     "Export Starting",
-                    "Preparing return equipment list export.\n\nRows to export: " + data.size()
+                    "Preparing return report export.\n\nRows to export: " + data.size()
             );
 
             try (FileWriter writer = new FileWriter(file)) {
-                writer.append("Asset Code,IMEI/Serial Number,Equipment Name,Category,Source,Entry Date,Returned By,Phone,NID,Return Condition,Remarks,Return Date\n");
+                writer.append("Asset Code,IMEI/Serial Number,Equipment Name,Category,Source,Date Taken,Reason,Returned By,Phone,NID,Return Condition,Remarks,Date Returned\n");
 
                 for (ReturnRecord record : data) {
                     writer.append(csvSafe(record.getAssetCode())).append(",")
@@ -189,7 +201,8 @@ public class ReturnReportController implements Initializable {
                             .append(csvSafe(record.getEquipmentName())).append(",")
                             .append(csvSafe(record.getCategory())).append(",")
                             .append(csvSafe(record.getSource())).append(",")
-                            .append(csvSafe(record.getEntryDate())).append(",")
+                            .append(csvSafe(record.getDateTaken())).append(",")
+                            .append(csvSafe(record.getAssignmentReason())).append(",")
                             .append(csvSafe(record.getReturnedBy())).append(",")
                             .append(csvSafe(record.getPhone())).append(",")
                             .append(csvSafe(record.getNid())).append(",")
@@ -201,14 +214,14 @@ public class ReturnReportController implements Initializable {
 
             OperationFeedbackHelper.showInfo(
                     "Export Complete",
-                    "Return equipment list exported successfully to:\n" + file.getAbsolutePath()
+                    "Return report exported successfully to:\n" + file.getAbsolutePath()
             );
 
         } catch (Exception e) {
             e.printStackTrace();
             OperationFeedbackHelper.showError(
                     "Export Failed",
-                    "Return equipment list export failed:\n" + e.getMessage()
+                    "Return report export failed:\n" + e.getMessage()
             );
         }
     }
@@ -220,7 +233,10 @@ public class ReturnReportController implements Initializable {
                 rs.getString("name"),
                 rs.getString("category"),
                 rs.getString("source"),
-                rs.getString("entry_date"),
+                rs.getString("date_taken"),
+                null,
+                null,
+                rs.getString("assignment_reason"),
                 rs.getString("returned_by"),
                 rs.getString("phone"),
                 rs.getString("nid"),
@@ -242,7 +258,7 @@ public class ReturnReportController implements Initializable {
 
     private void setupContextMenu() {
         ContextMenu menu = new ContextMenu();
-        MenuItem refresh = new MenuItem("Refresh Return Equipment List");
+        MenuItem refresh = new MenuItem("Refresh Return Report");
         refresh.setOnAction(event -> handleRefresh());
         menu.getItems().add(refresh);
         tableReturns.setContextMenu(menu);

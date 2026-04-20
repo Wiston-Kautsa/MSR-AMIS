@@ -28,6 +28,7 @@ public class CreateAssignmentController implements Initializable {
     @FXML private ComboBox<String> cmbPerson;
     @FXML private TextField txtDepartment;
     @FXML private ComboBox<String> cmbEquipmentType;
+    @FXML private TextField txtReason;
     @FXML private TextField txtQuantity;
     @FXML private Label lblAvailableStock;
 
@@ -36,6 +37,7 @@ public class CreateAssignmentController implements Initializable {
     @FXML private TableColumn<Assignment, String> colPerson;
     @FXML private TableColumn<Assignment, String> colDepartment;
     @FXML private TableColumn<Assignment, String> colEquipment;
+    @FXML private TableColumn<Assignment, String> colReason;
     @FXML private TableColumn<Assignment, Integer> colQty;
     @FXML private TableColumn<Assignment, String> colStatus;
     @FXML private TableColumn<Assignment, String> colDate;
@@ -135,6 +137,7 @@ public class CreateAssignmentController implements Initializable {
         colPerson.setCellValueFactory(c -> c.getValue().personProperty());
         colDepartment.setCellValueFactory(c -> c.getValue().departmentProperty());
         colEquipment.setCellValueFactory(c -> c.getValue().equipmentTypeProperty());
+        colReason.setCellValueFactory(c -> c.getValue().reasonProperty());
         colQty.setCellValueFactory(c -> c.getValue().quantityProperty().asObject());
         colStatus.setCellValueFactory(c -> {
             Assignment assignment = c.getValue();
@@ -198,6 +201,7 @@ public class CreateAssignmentController implements Initializable {
         String type = cmbEquipmentType != null && cmbEquipmentType.getValue() != null
                 ? cmbEquipmentType.getValue().trim()
                 : "";
+        String reason = safe(txtReason);
         String qtyText = safe(txtQuantity);
 
         if (dept.isEmpty()) {
@@ -208,8 +212,8 @@ public class CreateAssignmentController implements Initializable {
             }
         }
 
-        if (person.isEmpty() || type.isEmpty() || qtyText.isEmpty()) {
-            showWarning("Missing Fields", "Responsible person, equipment group, and quantity are required.");
+        if (person.isEmpty() || type.isEmpty() || reason.isEmpty() || qtyText.isEmpty()) {
+            showWarning("Missing Fields", "Responsible person, equipment group, reason, and quantity are required.");
             return;
         }
 
@@ -231,7 +235,7 @@ public class CreateAssignmentController implements Initializable {
                 return;
             }
 
-            DatabaseHandler.insertAssignment(person, dept.isEmpty() ? DEFAULT_DEPARTMENT : dept, type, qty);
+            DatabaseHandler.insertAssignment(person, dept.isEmpty() ? DEFAULT_DEPARTMENT : dept, type, reason, qty);
             clearForm();
             loadAssignments();
             loadEquipmentTypes();
@@ -249,6 +253,9 @@ public class CreateAssignmentController implements Initializable {
         }
         if (cmbEquipmentType != null) {
             cmbEquipmentType.setValue(null);
+        }
+        if (txtReason != null) {
+            txtReason.clear();
         }
         txtDepartment.setText(DEFAULT_DEPARTMENT);
         txtQuantity.clear();
@@ -271,7 +278,7 @@ public class CreateAssignmentController implements Initializable {
         );
 
         try (FileWriter writer = new FileWriter(file)) {
-            writer.append("Person,Department,Equipment,Quantity,Status,Date\n");
+            writer.append("Person,Department,Equipment,Reason,Quantity,Status,Date\n");
 
             for (Assignment assignment : itemsToExport) {
                 int distributed = DatabaseHandler.getDistributedCountForAssignment(assignment.getId());
@@ -287,6 +294,7 @@ public class CreateAssignmentController implements Initializable {
                 writer.append(csvSafe(assignment.getPerson())).append(",")
                         .append(csvSafe(assignment.getDepartment())).append(",")
                         .append(csvSafe(assignment.getEquipmentType())).append(",")
+                        .append(csvSafe(assignment.getReason())).append(",")
                         .append(String.valueOf(assignment.getQuantity())).append(",")
                         .append(status).append(",")
                         .append(csvSafe(assignment.getDate())).append("\n");

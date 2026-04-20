@@ -52,10 +52,6 @@ public class InventoryReportController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
 
-        cmbCategory.getItems().addAll(
-                "Tablet", "Laptop", "Desktop", "Printer", "Router", "Other"
-        );
-
         cmbStatus.getItems().addAll(
                 "AVAILABLE", "ASSIGNED", "MAINTENANCE", "RETIRED"
         );
@@ -71,6 +67,7 @@ public class InventoryReportController implements Initializable {
 
         setupContextMenu();
         loadData();
+        loadCategories();
     }
 
     // ================= LOAD DATA =================
@@ -105,6 +102,11 @@ public class InventoryReportController implements Initializable {
         }
 
         tableInventory.setItems(data);
+    }
+
+    private void loadCategories() {
+        cmbCategory.getItems().clear();
+        cmbCategory.getItems().addAll(DatabaseHandler.getEquipmentCategories());
     }
 
     // ================= FILTER =================
@@ -162,6 +164,7 @@ public class InventoryReportController implements Initializable {
         cmbStatus.setValue(null);
 
         loadData();
+        loadCategories();
         showAlert("Refresh", "Inventory report refreshed successfully.");
     }
 
@@ -182,7 +185,7 @@ public class InventoryReportController implements Initializable {
 
         try (FileWriter writer = new FileWriter(file)) {
 
-            writer.append("System Serial No.,Name,Category,IMEI/Serial Number,Condition,Status,Source,Date\n");
+            writer.append("Asset Code,Name,Category,IMEI/Serial Number,Condition,Status,Source,Date\n");
 
             for (Equipment e : data) {
                 writer.append(csvSafe(e.getAssetCode())).append(",")

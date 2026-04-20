@@ -12,6 +12,7 @@ public class Assignment {
     private final StringProperty person;
     private final StringProperty department;
     private final StringProperty equipmentType;
+    private final StringProperty reason;
     private final IntegerProperty quantity;
     private final StringProperty date;
 
@@ -25,12 +26,13 @@ public class Assignment {
 
     // ================= MAIN CONSTRUCTOR (DB USE) =================
     public Assignment(int id, String person, String department,
-                      String equipmentType, int quantity, String date) {
+                      String equipmentType, String reason, int quantity, String date) {
 
         this.id = new SimpleIntegerProperty(id);
         this.person = new SimpleStringProperty(safe(person));
         this.department = new SimpleStringProperty(safe(department));
         this.equipmentType = new SimpleStringProperty(safe(equipmentType));
+        this.reason = new SimpleStringProperty(safe(reason));
         this.quantity = new SimpleIntegerProperty(quantity);
         this.date = new SimpleStringProperty(safe(date));
 
@@ -53,6 +55,7 @@ public class Assignment {
         this.person = new SimpleStringProperty(safe(assignmentName));
         this.department = new SimpleStringProperty("");
         this.equipmentType = new SimpleStringProperty(safe(equipmentName));
+        this.reason = new SimpleStringProperty("");
         this.quantity = new SimpleIntegerProperty(1);
         this.date = new SimpleStringProperty(safe(date));
 
@@ -71,6 +74,7 @@ public class Assignment {
     public String getPerson()      { return person.get(); }
     public String getDepartment()  { return department.get(); }
     public String getEquipmentType() { return equipmentType.get(); }
+    public String getReason()      { return reason.get(); }
     public int getQuantity()       { return quantity.get(); }
     public String getDate()        { return date.get(); }
 
@@ -88,6 +92,7 @@ public class Assignment {
     public void setPerson(String v)              { this.person.set(safe(v)); }
     public void setDepartment(String v)          { this.department.set(safe(v)); }
     public void setEquipmentType(String v)       { this.equipmentType.set(safe(v)); }
+    public void setReason(String v)              { this.reason.set(safe(v)); }
     public void setQuantity(int v)               { this.quantity.set(v); }
     public void setDate(String v)                { this.date.set(safe(v)); }
 
@@ -96,6 +101,7 @@ public class Assignment {
     public StringProperty personProperty()       { return person; }
     public StringProperty departmentProperty()   { return department; }
     public StringProperty equipmentTypeProperty(){ return equipmentType; }
+    public StringProperty reasonProperty()       { return reason; }
     public IntegerProperty quantityProperty()    { return quantity; }
     public StringProperty dateProperty()         { return date; }
 
@@ -107,6 +113,7 @@ public class Assignment {
                 ", person='" + getPerson() + '\'' +
                 ", department='" + getDepartment() + '\'' +
                 ", equipmentType='" + getEquipmentType() + '\'' +
+                ", reason='" + getReason() + '\'' +
                 ", quantity=" + getQuantity() +
                 ", date='" + getDate() + '\'' +
                 '}';

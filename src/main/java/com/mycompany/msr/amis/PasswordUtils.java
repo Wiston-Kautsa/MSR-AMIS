@@ -18,6 +18,7 @@ import java.util.Base64;
 public final class PasswordUtils {
 
     private static final int SALT_BYTES = 16;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private PasswordUtils() {}
 
@@ -62,5 +63,17 @@ public final class PasswordUtils {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 not available", e);
         }
+    }
+
+    public static String generateNumericCode(int length) {
+        if (length <= 0) {
+            throw new IllegalArgumentException("Code length must be greater than zero.");
+        }
+
+        StringBuilder builder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            builder.append(RANDOM.nextInt(10));
+        }
+        return builder.toString();
     }
 }

@@ -50,12 +50,13 @@ public class AddEquipmentController implements Initializable {
 
         setupTable();
 
-        cmbCategory.getItems().addAll("Tablet", "Laptop", "Phone");
-        cmbCondition.getItems().addAll("New", "Used", "Damaged");
+        cmbCategory.setEditable(true);
+        cmbCondition.getItems().addAll("New", "Used", "Good", "Fair", "Damaged", "Faulty");
 
         dateEntry.setValue(LocalDate.now());
 
         loadEquipmentFromDatabase();
+        loadCategories();
     }
 
     // ================= TABLE =================
@@ -74,6 +75,11 @@ public class AddEquipmentController implements Initializable {
     private void loadEquipmentFromDatabase() {
         equipmentList.clear();
         equipmentList.addAll(DatabaseHandler.getAllEquipment());
+    }
+
+    private void loadCategories() {
+        cmbCategory.getItems().clear();
+        cmbCategory.getItems().addAll(DatabaseHandler.getEquipmentCategories());
     }
 
     // ================= SAVE =================
@@ -102,11 +108,12 @@ public class AddEquipmentController implements Initializable {
         try {
             DatabaseHandler.insertEquipment(eq);
             loadEquipmentFromDatabase();
+            loadCategories();
             showInfo("Equipment saved successfully");
             clearForm(null);
         } catch (Exception e) {
             e.printStackTrace();
-            showError("Failed to save equipment");
+            showError("Failed to save equipment: " + e.getMessage());
         }
     }
 
@@ -252,10 +259,10 @@ public class AddEquipmentController implements Initializable {
 
             Sheet sheet = wb.getSheetAt(0);
 
-            if (sheet.getRow(0).getLastCellNum() < 5) {
+            if (sheet.getRow(0) == null || sheet.getRow(0).getLastCellNum() < 5) {
                 OperationFeedbackHelper.showError(
-                        "Invalid File",
-                        "The Excel file must contain 5 columns."
+                    "Invalid File",
+                    "The Excel file must contain 5 columns."
                 );
                 return;
             }
@@ -292,6 +299,7 @@ public class AddEquipmentController implements Initializable {
             }
 
             loadEquipmentFromDatabase();
+            loadCategories();
             OperationFeedbackHelper.showInfo(
                     "Upload Complete",
                     "Equipment upload completed.\n\nImported records: " + inserted
@@ -300,8 +308,8 @@ public class AddEquipmentController implements Initializable {
         } catch (Exception e) {
             e.printStackTrace();
             OperationFeedbackHelper.showError(
-                    "Upload Failed",
-                    "Error reading the Excel file."
+                "Upload Failed",
+                "Error reading the Excel file.\n\n" + e.getMessage()
             );
         }
     }

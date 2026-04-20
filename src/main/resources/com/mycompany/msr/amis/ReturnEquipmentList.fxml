@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="600.0" prefWidth="1100.0"
+            styleClass="content"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mycompany.msr.amis.ReturnEquipmentListController">
+
+    <stylesheets>
+        <URL value="@theme.css"/>
+    </stylesheets>
+
+    <VBox spacing="15"
+          AnchorPane.topAnchor="10"
+          AnchorPane.bottomAnchor="10"
+          AnchorPane.leftAnchor="10"
+          AnchorPane.rightAnchor="10">
+
+        <Label text="Return Equipment List" styleClass="header-title"/>
+
+        <HBox spacing="10">
+            <ComboBox fx:id="cmbPerson" promptText="Returned By" prefWidth="180"/>
+            <ComboBox fx:id="cmbCondition" promptText="Condition" prefWidth="150"/>
+            <Button text="Filter" onAction="#handleFilter"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Export" onAction="#handleExport"/>
+        </HBox>
+
+        <TableView fx:id="tableReturns" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colAssetCode" text="Asset Code" prefWidth="110"/>
+                <TableColumn fx:id="colResponsibleOfficer" text="Responsible Officer" prefWidth="170"/>
+                <TableColumn fx:id="colEquipmentType" text="Equipment Type" prefWidth="140"/>
+                <TableColumn fx:id="colAssignmentReason" text="Assignment Reason" prefWidth="220"/>
+                <TableColumn fx:id="colReturnedBy" text="Returned By" prefWidth="120"/>
+                <TableColumn fx:id="colPhone" text="Phone" prefWidth="110"/>
+                <TableColumn fx:id="colNID" text="NID" prefWidth="110"/>
+                <TableColumn fx:id="colCondition" text="Return Condition" prefWidth="120"/>
+                <TableColumn fx:id="colRemarks" text="Remarks" prefWidth="160"/>
+                <TableColumn fx:id="colDate" text="Return Date" prefWidth="110"/>
+            </columns>
+        </TableView>
+
+    </VBox>
+
+</AnchorPane>

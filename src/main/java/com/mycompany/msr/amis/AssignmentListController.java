@@ -17,8 +17,12 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Label;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.beans.binding.Bindings;
+import javafx.scene.layout.GridPane;
 
 public class AssignmentListController implements Initializable {
 
@@ -28,6 +32,7 @@ public class AssignmentListController implements Initializable {
     @FXML private TableColumn<Assignment, String> colPerson;
     @FXML private TableColumn<Assignment, String> colDepartment;
     @FXML private TableColumn<Assignment, String> colEquipment;
+    @FXML private TableColumn<Assignment, String> colReason;
     @FXML private TableColumn<Assignment, Integer> colQty;
     @FXML private TableColumn<Assignment, Integer> colAssigned;
     @FXML private TableColumn<Assignment, String> colStatus;
@@ -42,6 +47,7 @@ public class AssignmentListController implements Initializable {
         colPerson.setCellValueFactory(new PropertyValueFactory<>("person"));
         colDepartment.setCellValueFactory(new PropertyValueFactory<>("department"));
         colEquipment.setCellValueFactory(new PropertyValueFactory<>("equipmentType"));
+        colReason.setCellValueFactory(new PropertyValueFactory<>("reason"));
         colQty.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
 
@@ -96,7 +102,8 @@ public class AssignmentListController implements Initializable {
         for (Assignment a : assignmentList) {
             if (a.getPerson().toLowerCase().contains(keyword)
                     || a.getDepartment().toLowerCase().contains(keyword)
-                    || a.getEquipmentType().toLowerCase().contains(keyword)) {
+                    || a.getEquipmentType().toLowerCase().contains(keyword)
+                    || a.getReason().toLowerCase().contains(keyword)) {
                 filtered.add(a);
             }
         }
@@ -136,8 +143,75 @@ public class AssignmentListController implements Initializable {
     }
 
     private void editAssignment(Assignment a) {
-        if (a == null) return;
-        showInfo("Edit functionality coming soon for: " + a.getPerson());
+        if (a == null) {
+            showError("Edit Error", "Select an assignment first.");
+            return;
+        }
+
+        int distributed = DatabaseHandler.getDistributedCountForAssignment(a.getId());
+        if (distributed > 0) {
+            showError("Edit Error", "This assignment already has distributed equipment and can no longer be edited.");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Edit Assignment");
+
+        TextField personField = new TextField(a.getPerson());
+        TextField departmentField = new TextField(a.getDepartment());
+        ComboBox<String> equipmentTypeField = new ComboBox<>();
+        equipmentTypeField.getItems().addAll(DatabaseHandler.getAvailableStockByCategory().keySet());
+        if (!equipmentTypeField.getItems().contains(a.getEquipmentType())) {
+            equipmentTypeField.getItems().add(a.getEquipmentType());
+        }
+        equipmentTypeField.setEditable(true);
+        equipmentTypeField.getEditor().setText(a.getEquipmentType());
+        TextField reasonField = new TextField(a.getReason());
+        TextField quantityField = new TextField(String.valueOf(a.getQuantity()));
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.add(new Label("Responsible Person:"), 0, 0);
+        grid.add(personField, 1, 0);
+        grid.add(new Label("Department:"), 0, 1);
+        grid.add(departmentField, 1, 1);
+        grid.add(new Label("Equipment Type:"), 0, 2);
+        grid.add(equipmentTypeField, 1, 2);
+        grid.add(new Label("Reason:"), 0, 3);
+        grid.add(reasonField, 1, 3);
+        grid.add(new Label("Quantity:"), 0, 4);
+        grid.add(quantityField, 1, 4);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        if (dialog.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+
+        int quantity;
+        try {
+            quantity = Integer.parseInt(quantityField.getText().trim());
+        } catch (Exception e) {
+            showError("Edit Error", "Quantity must be a valid number.");
+            return;
+        }
+
+        try {
+            DatabaseHandler.updateAssignment(
+                    a.getId(),
+                    personField.getText(),
+                    departmentField.getText(),
+                    equipmentTypeField.getEditor().getText(),
+                    reasonField.getText(),
+                    quantity
+            );
+            refreshTable();
+            showInfo("Assignment updated successfully.");
+        } catch (Exception e) {
+            showError("Edit Error", e.getMessage());
+        }
     }
 
     private void deleteAssignment(Assignment a) {

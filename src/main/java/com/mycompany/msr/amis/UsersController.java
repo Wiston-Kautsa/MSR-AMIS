@@ -21,7 +21,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 
@@ -43,12 +42,14 @@ public class UsersController implements Initializable {
     @FXML private TableColumn<User, String> colRole;
     @FXML private TableColumn<User, String> colDepartment;
     @FXML private TableColumn<User, String> colEmail;
+    @FXML private TableColumn<User, String> colStatus;
 
     private ObservableList<User> data;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        cmbRole.getItems().addAll("ADMIN", "USER");
+        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        configureRoleChoices(cmbRole);
         loadDepartments();
 
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -56,6 +57,7 @@ public class UsersController implements Initializable {
         colRole.setCellValueFactory(new PropertyValueFactory<>("role"));
         colDepartment.setCellValueFactory(new PropertyValueFactory<>("department"));
         colEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
 
         setupUsersTableMenu();
         loadUsers();
@@ -76,10 +78,25 @@ public class UsersController implements Initializable {
             MenuItem delete = new MenuItem("Delete User");
             delete.setOnAction(e -> deleteUser(row.getItem()));
 
+            MenuItem toggleStatus = new MenuItem();
+            toggleStatus.textProperty().bind(Bindings.createStringBinding(
+                    () -> {
+                        User user = row.getItem();
+                        if (user == null) {
+                            return "Toggle Status";
+                        }
+                        return AccessControl.STATUS_FROZEN.equalsIgnoreCase(user.getStatus())
+                                ? "Activate User"
+                                : "Freeze User";
+                    },
+                    row.itemProperty()
+            ));
+            toggleStatus.setOnAction(e -> toggleUserStatus(row.getItem()));
+
             MenuItem refresh = new MenuItem("Refresh Users");
             refresh.setOnAction(e -> refreshUsers());
 
-            menu.getItems().addAll(edit, delete, refresh);
+            menu.getItems().addAll(edit, delete, toggleStatus, refresh);
 
             row.contextMenuProperty().bind(
                     Bindings.when(row.emptyProperty())
@@ -140,6 +157,8 @@ public class UsersController implements Initializable {
 
             showAlert("Success", "User added successfully.");
 
+        } catch (SecurityException e) {
+            showAlert("Access Denied", e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Error", "User creation failed.");
@@ -173,7 +192,7 @@ public class UsersController implements Initializable {
         TextField nameField = new TextField(selected.getFullName());
         TextField emailField = new TextField(selected.getEmail());
         ComboBox<String> roleField = new ComboBox<>();
-        roleField.getItems().addAll("ADMIN", "USER");
+        configureRoleChoices(roleField);
         roleField.setValue(selected.getRole());
         ComboBox<String> departmentField = new ComboBox<>();
         departmentField.getItems().addAll(DatabaseHandler.getDepartments());
@@ -229,20 +248,16 @@ public class UsersController implements Initializable {
             return;
         }
 
-        try {
-            // Save must read the current dialog values, update the database-backed record by ID,
-            // then reload the table so the user sees the persisted result instead of a UI-only edit.
-            System.out.println("Updating user:");
-            System.out.println("ID: " + selected.getId());
-            System.out.println("Full Name: " + name);
-            System.out.println("Email: " + email);
-            System.out.println("Role: " + role);
-            System.out.println("Department: " + department);
-            System.out.println("Password entered: " + !password.isBlank());
+        if ("ADMIN".equalsIgnoreCase(selected.getRole())
+                && !"ADMIN".equalsIgnoreCase(role)
+                && DatabaseHandler.getAdminCount() <= 1) {
+            showAlert("Error", "The last admin account cannot be changed to a non-admin role.");
+            return;
+        }
 
+        try {
             String hashedPassword = password.isEmpty() ? "" : PasswordUtils.hash(password);
             boolean updated = DatabaseHandler.updateUser(selected.getId(), name, hashedPassword, role, department, email);
-            System.out.println("Update success: " + updated);
 
             if (!updated) {
                 showAlert("Error", "User was not updated.");
@@ -255,6 +270,8 @@ public class UsersController implements Initializable {
             showStatus("User information has been edited successfully.");
             showAlert("Success", "User updated successfully.");
 
+        } catch (SecurityException e) {
+            showAlert("Access Denied", e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Error", "User update failed.");
@@ -267,6 +284,11 @@ public class UsersController implements Initializable {
             return;
         }
 
+        if ("ADMIN".equalsIgnoreCase(selected.getRole()) && DatabaseHandler.getAdminCount() <= 1) {
+            showAlert("Error", "The last admin account cannot be deleted.");
+            return;
+        }
+
         try {
             DatabaseHandler.deleteUser(selected.getId());
             loadUsers();
@@ -275,9 +297,39 @@ public class UsersController implements Initializable {
             showStatus("User information deleted successfully.");
             showAlert("Success", "User deleted successfully.");
 
+        } catch (SecurityException e) {
+            showAlert("Access Denied", e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Error", "Delete failed.");
+        }
+    }
+
+    private void toggleUserStatus(User selected) {
+        if (selected == null) {
+            showAlert("Error", "Select a user first.");
+            return;
+        }
+
+        String nextStatus = AccessControl.STATUS_FROZEN.equalsIgnoreCase(selected.getStatus())
+                ? AccessControl.STATUS_ACTIVE
+                : AccessControl.STATUS_FROZEN;
+
+        try {
+            boolean updated = DatabaseHandler.updateUserStatus(selected.getId(), nextStatus);
+            if (!updated) {
+                showAlert("Error", "User status was not updated.");
+                return;
+            }
+
+            loadUsers();
+            showStatus("User status updated to " + nextStatus + ".");
+            showAlert("Success", "User status updated successfully.");
+        } catch (SecurityException e) {
+            showAlert("Access Denied", e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Error", "Status update failed.");
         }
     }
 
@@ -336,6 +388,22 @@ public class UsersController implements Initializable {
                 tableUsers.scrollTo(user);
                 return;
             }
+        }
+    }
+
+    private void configureRoleChoices(ComboBox<String> comboBox) {
+        if (comboBox == null) {
+            return;
+        }
+
+        comboBox.getItems().clear();
+        if (Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
+            comboBox.getItems().addAll(
+                    AccessControl.ROLE_ADMIN,
+                    AccessControl.ROLE_USER
+            );
+        } else {
+            comboBox.getItems().add(AccessControl.ROLE_USER);
         }
     }
 

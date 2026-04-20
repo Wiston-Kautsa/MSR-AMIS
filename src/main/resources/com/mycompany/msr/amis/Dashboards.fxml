@@ -109,7 +109,7 @@
 
                                         <Button text="Return Equipment List"
                                                 styleClass="submenu-button"
-                                                onAction="#openReturnReport"/>
+                                                onAction="#openReturnEquipmentList"/>
 
                                     </children>
                                 </VBox>
@@ -133,6 +133,10 @@
                                                 styleClass="submenu-button"
                                                 onAction="#openDistributionReport"/>
 
+                                        <Button text="Asset History"
+                                                styleClass="submenu-button"
+                                                onAction="#openAssetHistory"/>
+
                                         <Button text="Return Report"
                                                 styleClass="submenu-button"
                                                 onAction="#openReturnReport"/>
@@ -152,7 +156,8 @@
 
                 <Separator/>
 
-                <Button text="Users"
+                <Button fx:id="btnUsers"
+                        text="Users"
                         styleClass="sidebar-button"
                         onAction="#openUsers"/>
 

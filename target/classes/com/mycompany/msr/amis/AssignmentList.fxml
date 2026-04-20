@@ -34,7 +34,6 @@
                        prefWidth="250"/>
 
             <Button text="Search" onAction="#searchAssignment"/>
-            <Button text="Refresh" onAction="#refreshTable"/>
 
         </HBox>
 
@@ -52,6 +51,8 @@
 
                 <TableColumn fx:id="colEquipment" text="Equipment"/>
 
+                <TableColumn fx:id="colReason" text="Reason"/>
+
                 <TableColumn fx:id="colQty" text="Qty"/>
 
                 <TableColumn fx:id="colAssigned" text="Assigned"/>
@@ -59,9 +60,6 @@
                 <TableColumn fx:id="colStatus" text="Status"/>
 
                 <TableColumn fx:id="colDate" text="Date"/>
-
-                <!-- ACTION COLUMN -->
-                <TableColumn fx:id="colActions" text="Actions"/>
 
             </columns>
 

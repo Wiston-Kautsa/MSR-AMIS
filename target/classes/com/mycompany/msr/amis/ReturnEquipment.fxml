@@ -53,63 +53,87 @@
         <!-- ================= SECTION 2 ================= -->
         <TitledPane text="Return Entry" expanded="true">
 
-            <HBox spacing="20">
+            <GridPane hgap="30" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="50"/>
+                    <ColumnConstraints percentWidth="50"/>
+                </columnConstraints>
 
                 <!-- LEFT: MANUAL -->
-                <VBox spacing="10" prefWidth="400">
+                <VBox spacing="10" GridPane.columnIndex="0" fillWidth="true">
 
                     <Label text="Manual Entry" styleClass="card-title"/>
 
-                    <GridPane hgap="10" vgap="10">
+                    <Label fx:id="lblReturnProgress" text="Entered Returns: 0 / 0"/>
+                    <Label text="New IMEI/serial: registers replacement and returns the old asset."
+                           wrapText="true"/>
 
-                        <Label text="Asset Code:" GridPane.rowIndex="0"/>
-                        <TextField fx:id="txtAssetCode" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <GridPane hgap="10" vgap="10">
+                        <columnConstraints>
+                            <ColumnConstraints percentWidth="45"/>
+                            <ColumnConstraints percentWidth="55"/>
+                        </columnConstraints>
+
+                        <Label text="Asset Code / New IMEI:" GridPane.rowIndex="0"/>
+                        <TextField fx:id="txtAssetCode" maxWidth="1.7976931348623157E308" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
                         <Label text="Responsible Officer:" GridPane.rowIndex="1"/>
-                        <TextField fx:id="txtOfficer" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtOfficer" maxWidth="1.7976931348623157E308" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
                         <Label text="Equipment Type:" GridPane.rowIndex="2"/>
-                        <TextField fx:id="txtEquipmentType" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtEquipmentType" maxWidth="1.7976931348623157E308" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
                         <Label text="Returned By:" GridPane.rowIndex="3"/>
-                        <TextField fx:id="txtReturnedBy" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtReturnedBy" maxWidth="1.7976931348623157E308" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
                         <Label text="Phone:" GridPane.rowIndex="4"/>
-                        <TextField fx:id="txtPhone" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtPhone" maxWidth="1.7976931348623157E308" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
 
                         <Label text="NID:" GridPane.rowIndex="5"/>
-                        <TextField fx:id="txtNid" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtNid" maxWidth="1.7976931348623157E308" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
 
                         <Label text="Condition:" GridPane.rowIndex="6"/>
-                        <ComboBox fx:id="cmbCondition" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+                        <ComboBox fx:id="cmbCondition" maxWidth="1.7976931348623157E308" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
 
                         <Label text="Remarks:" GridPane.rowIndex="7"/>
-                        <TextField fx:id="txtRemarks" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                        <TextField fx:id="txtRemarks" maxWidth="1.7976931348623157E308" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
 
                     </GridPane>
 
                     <HBox spacing="10">
-                        <Button text="Return Equipment" onAction="#handleReturn"/>
+                        <Button text="Add Return" onAction="#handleReturn"/>
+                        <Button fx:id="btnSaveReturns" text="Save" onAction="#saveReturns"/>
                         <Button text="Clear" onAction="#clearForm"/>
                     </HBox>
 
                 </VBox>
 
                 <!-- RIGHT: BULK -->
-                <VBox spacing="10" prefWidth="300">
+                <VBox spacing="14" GridPane.columnIndex="1" fillWidth="true">
 
                     <Label text="Bulk Upload" styleClass="card-title"/>
+                    <Label text="Upload many returns at once. Use the template so the system reads the file correctly."
+                           wrapText="true"/>
 
-                    <HBox spacing="10">
-                        <Button text="Choose File" onAction="#chooseFile"/>
-                        <Label fx:id="lblFileName" text="No file selected"/>
-                    </HBox>
-
-                    <Button text="Upload" onAction="#handleBulkUpload"/>
+                    <VBox spacing="10">
+                        <Button text="Download Template"
+                                maxWidth="1.7976931348623157E308"
+                                onAction="#downloadTemplate"/>
+                        <Button text="Choose File"
+                                maxWidth="1.7976931348623157E308"
+                                onAction="#chooseFile"/>
+                        <Label fx:id="lblFileName"
+                               text="No file selected"
+                               wrapText="true"/>
+                        <Button text="Upload"
+                                maxWidth="1.7976931348623157E308"
+                                onAction="#handleBulkUpload"/>
+                        <Region VBox.vgrow="ALWAYS"/>
+                    </VBox>
 
                 </VBox>
 
-            </HBox>
+            </GridPane>
 
         </TitledPane>
 

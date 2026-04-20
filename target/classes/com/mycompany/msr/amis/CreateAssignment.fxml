@@ -30,11 +30,9 @@
                         <Insets top="20.0" left="20.0" right="20.0" bottom="20.0"/>
                     </padding>
 
-                    <!-- TITLE -->
                     <Label text="Create Assignment"
                            styleClass="title-label"/>
 
-                    <!-- FORM -->
                     <TitledPane text="Assignment Details" expanded="true" styleClass="card">
 
                         <content>
@@ -50,7 +48,6 @@
                                     <ColumnConstraints percentWidth="70.0"/>
                                 </columnConstraints>
 
-                                <!-- ✅ FIXED: ComboBox instead of TextField -->
                                 <Label text="Responsible Person:" GridPane.rowIndex="0"/>
                                 <ComboBox fx:id="cmbPerson"
                                           prefWidth="250"
@@ -60,17 +57,33 @@
 
                                 <Label text="Department:" GridPane.rowIndex="1"/>
                                 <TextField fx:id="txtDepartment"
+                                           promptText="Department"
                                            GridPane.rowIndex="1"
                                            GridPane.columnIndex="1"/>
 
                                 <Label text="Equipment Type:" GridPane.rowIndex="2"/>
-                                <TextField fx:id="txtEquipmentType"
-                                           GridPane.rowIndex="2"
+                                <VBox spacing="6.0"
+                                      GridPane.rowIndex="2"
+                                      GridPane.columnIndex="1">
+                                    <children>
+                                        <ComboBox fx:id="cmbEquipmentType"
+                                                  prefWidth="250"
+                                                  promptText="Select Equipment Group"/>
+                                        <Label fx:id="lblAvailableStock"
+                                               text="Available in stock: Select equipment group"
+                                               styleClass="card-title"/>
+                                    </children>
+                                </VBox>
+
+                                <Label text="Reason:" GridPane.rowIndex="3"/>
+                                <TextField fx:id="txtReason"
+                                           promptText="Reason for assignment"
+                                           GridPane.rowIndex="3"
                                            GridPane.columnIndex="1"/>
 
-                                <Label text="Quantity:" GridPane.rowIndex="3"/>
+                                <Label text="Quantity:" GridPane.rowIndex="4"/>
                                 <TextField fx:id="txtQuantity"
-                                           GridPane.rowIndex="3"
+                                           GridPane.rowIndex="4"
                                            GridPane.columnIndex="1"/>
 
                             </GridPane>
@@ -79,7 +92,6 @@
 
                     </TitledPane>
 
-                    <!-- BUTTONS -->
                     <HBox spacing="15.0" alignment="CENTER_RIGHT">
 
                         <Button text="Save Assignment"
@@ -92,30 +104,44 @@
 
                     </HBox>
 
-                    <!-- TABLE -->
                     <TitledPane text="Assignment Records" expanded="true" styleClass="card">
 
                         <content>
 
-                            <TableView fx:id="tableAssignments"
-                                       prefHeight="350.0">
+                            <VBox spacing="10.0">
+                                <children>
 
-                                <!-- ✅ CLEANED -->
-                                <columnResizePolicy>
-                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
-                                </columnResizePolicy>
+                                    <HBox alignment="CENTER_RIGHT">
+                                        <children>
+                                            <Button text="Export List"
+                                                    onAction="#exportAssignments"
+                                                    styleClass="btn-secondary"/>
+                                        </children>
+                                    </HBox>
 
-                                <columns>
+                                    <TableView fx:id="tableAssignments"
+                                               prefHeight="350.0">
 
-                                    <TableColumn fx:id="colPerson" text="Person"/>
-                                    <TableColumn fx:id="colDepartment" text="Department"/>
-                                    <TableColumn fx:id="colEquipment" text="Equipment"/>
-                                    <TableColumn fx:id="colQty" text="Qty"/>
-                                    <TableColumn fx:id="colDate" text="Date"/>
+                                        <columnResizePolicy>
+                                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                                        </columnResizePolicy>
 
-                                </columns>
+                                        <columns>
 
-                            </TableView>
+                                            <TableColumn fx:id="colPerson" text="Person"/>
+                                            <TableColumn fx:id="colDepartment" text="Department"/>
+                                            <TableColumn fx:id="colEquipment" text="Equipment"/>
+                                            <TableColumn fx:id="colReason" text="Reason"/>
+                                            <TableColumn fx:id="colQty" text="Qty"/>
+                                            <TableColumn fx:id="colStatus" text="Status"/>
+                                            <TableColumn fx:id="colDate" text="Date"/>
+
+                                        </columns>
+
+                                    </TableView>
+
+                                </children>
+                            </VBox>
 
                         </content>
 

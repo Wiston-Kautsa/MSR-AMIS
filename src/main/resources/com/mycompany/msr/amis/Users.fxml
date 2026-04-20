@@ -68,7 +68,9 @@
 
                             <TableColumn fx:id="colDepartment" text="Department" prefWidth="170"/>
 
-                            <TableColumn fx:id="colEmail" text="Email" prefWidth="220"/>
+                            <TableColumn fx:id="colEmail" text="Email" prefWidth="180"/>
+
+                            <TableColumn fx:id="colStatus" text="Status" prefWidth="100"/>
 
                         </columns>
 

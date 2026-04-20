@@ -75,9 +75,15 @@
                                     </children>
                                 </VBox>
 
-                                <Label text="Quantity:" GridPane.rowIndex="3"/>
-                                <TextField fx:id="txtQuantity"
+                                <Label text="Reason:" GridPane.rowIndex="3"/>
+                                <TextField fx:id="txtReason"
+                                           promptText="Reason for assignment"
                                            GridPane.rowIndex="3"
+                                           GridPane.columnIndex="1"/>
+
+                                <Label text="Quantity:" GridPane.rowIndex="4"/>
+                                <TextField fx:id="txtQuantity"
+                                           GridPane.rowIndex="4"
                                            GridPane.columnIndex="1"/>
 
                             </GridPane>
@@ -125,6 +131,7 @@
                                             <TableColumn fx:id="colPerson" text="Person"/>
                                             <TableColumn fx:id="colDepartment" text="Department"/>
                                             <TableColumn fx:id="colEquipment" text="Equipment"/>
+                                            <TableColumn fx:id="colReason" text="Reason"/>
                                             <TableColumn fx:id="colQty" text="Qty"/>
                                             <TableColumn fx:id="colStatus" text="Status"/>
                                             <TableColumn fx:id="colDate" text="Date"/>

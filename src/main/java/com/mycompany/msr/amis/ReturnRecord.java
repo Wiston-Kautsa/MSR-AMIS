@@ -10,7 +10,10 @@ public class ReturnRecord {
     private final StringProperty equipmentName;
     private final StringProperty category;
     private final StringProperty source;
-    private final StringProperty entryDate;
+    private final StringProperty dateTaken;
+    private final StringProperty responsibleOfficer;
+    private final StringProperty assignmentEquipmentType;
+    private final StringProperty assignmentReason;
     private final StringProperty returnedBy;
     private final StringProperty phone;
     private final StringProperty nid;
@@ -24,7 +27,10 @@ public class ReturnRecord {
             String equipmentName,
             String category,
             String source,
-            String entryDate,
+            String dateTaken,
+            String responsibleOfficer,
+            String assignmentEquipmentType,
+            String assignmentReason,
             String returnedBy,
             String phone,
             String nid,
@@ -37,7 +43,10 @@ public class ReturnRecord {
         this.equipmentName = new SimpleStringProperty(safe(equipmentName));
         this.category = new SimpleStringProperty(safe(category));
         this.source = new SimpleStringProperty(safe(source));
-        this.entryDate = new SimpleStringProperty(safe(entryDate));
+        this.dateTaken = new SimpleStringProperty(safe(dateTaken));
+        this.responsibleOfficer = new SimpleStringProperty(safe(responsibleOfficer));
+        this.assignmentEquipmentType = new SimpleStringProperty(safe(assignmentEquipmentType));
+        this.assignmentReason = new SimpleStringProperty(safe(assignmentReason));
         this.returnedBy = new SimpleStringProperty(safe(returnedBy));
         this.phone = new SimpleStringProperty(safe(phone));
         this.nid = new SimpleStringProperty(safe(nid));
@@ -55,7 +64,10 @@ public class ReturnRecord {
     public String getEquipmentName() { return equipmentName.get(); }
     public String getCategory() { return category.get(); }
     public String getSource() { return source.get(); }
-    public String getEntryDate() { return entryDate.get(); }
+    public String getDateTaken() { return dateTaken.get(); }
+    public String getResponsibleOfficer() { return responsibleOfficer.get(); }
+    public String getAssignmentEquipmentType() { return assignmentEquipmentType.get(); }
+    public String getAssignmentReason() { return assignmentReason.get(); }
     public String getReturnedBy() { return returnedBy.get(); }
     public String getPhone() { return phone.get(); }
     public String getNid() { return nid.get(); }
@@ -68,7 +80,10 @@ public class ReturnRecord {
     public StringProperty equipmentNameProperty() { return equipmentName; }
     public StringProperty categoryProperty() { return category; }
     public StringProperty sourceProperty() { return source; }
-    public StringProperty entryDateProperty() { return entryDate; }
+    public StringProperty dateTakenProperty() { return dateTaken; }
+    public StringProperty responsibleOfficerProperty() { return responsibleOfficer; }
+    public StringProperty assignmentEquipmentTypeProperty() { return assignmentEquipmentType; }
+    public StringProperty assignmentReasonProperty() { return assignmentReason; }
     public StringProperty returnedByProperty() { return returnedBy; }
     public StringProperty phoneProperty() { return phone; }
     public StringProperty nidProperty() { return nid; }

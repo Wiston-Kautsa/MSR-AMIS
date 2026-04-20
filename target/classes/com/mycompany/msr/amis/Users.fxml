@@ -21,29 +21,23 @@
 
                 <children>
 
-                    <!-- LEFT SIDE -->
                     <Label text="Full Name:" layoutX="20" layoutY="20"/>
                     <TextField fx:id="txtName" layoutX="120" layoutY="15" prefWidth="200"/>
 
-                    <Label text="Username:" layoutX="20" layoutY="55"/>
-                    <TextField fx:id="txtUsername" layoutX="120" layoutY="50" prefWidth="200"/>
-
-                    <Label text="Phone:" layoutX="20" layoutY="90"/>
-                    <TextField fx:id="txtPhone" layoutX="120" layoutY="85" prefWidth="200"/>
-
-                    <!-- RIGHT SIDE -->
                     <Label text="Password:" layoutX="360" layoutY="20"/>
                     <PasswordField fx:id="txtPassword" layoutX="450" layoutY="15" prefWidth="200"/>
+
+                    <Label text="Email:" layoutX="20" layoutY="55"/>
+                    <TextField fx:id="txtEmail" layoutX="120" layoutY="50" prefWidth="200"/>
+
+                    <Label text="Department:" layoutX="20" layoutY="90"/>
+                    <ComboBox fx:id="cmbDepartment" layoutX="120" layoutY="85" prefWidth="200"/>
 
                     <Label text="Role:" layoutX="360" layoutY="55"/>
                     <ComboBox fx:id="cmbRole" layoutX="450" layoutY="50" prefWidth="200"/>
 
-                    <Label text="Email:" layoutX="360" layoutY="90"/>
-                    <TextField fx:id="txtEmail" layoutX="450" layoutY="85" prefWidth="200"/>
-
-                    <!-- BUTTON -->
                     <Button text="Add User"
-                            layoutX="680" layoutY="55"
+                            layoutX="680" layoutY="50"
                             prefWidth="100"
                             onAction="#handleAddUser"/>
 
@@ -70,23 +64,22 @@
 
                             <TableColumn fx:id="colName" text="Full Name" prefWidth="160"/>
 
-                            <TableColumn fx:id="colUsername" text="Username" prefWidth="140"/>
-
                             <TableColumn fx:id="colRole" text="Role" prefWidth="100"/>
 
-                            <TableColumn fx:id="colPhone" text="Phone" prefWidth="140"/>
+                            <TableColumn fx:id="colDepartment" text="Department" prefWidth="170"/>
 
                             <TableColumn fx:id="colEmail" text="Email" prefWidth="180"/>
+
+                            <TableColumn fx:id="colStatus" text="Status" prefWidth="100"/>
 
                         </columns>
 
                     </TableView>
 
-                    <!-- DELETE BUTTON -->
-                    <Button text="Delete User"
-                            layoutX="650" layoutY="270"
-                            prefWidth="140"
-                            onAction="#handleDeleteUser"/>
+                    <Label fx:id="lblUserStatus"
+                           layoutX="10" layoutY="274"
+                           prefWidth="780"
+                           text=""/>
 
                 </children>
 

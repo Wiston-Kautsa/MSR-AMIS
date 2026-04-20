@@ -51,7 +51,7 @@
 
             <columns>
 
-                <TableColumn fx:id="colAssetCode" text="System Serial No."/>
+                <TableColumn fx:id="colAssetCode" text="Asset Code"/>
 
                 <TableColumn fx:id="colName" text="Name"/>
 
