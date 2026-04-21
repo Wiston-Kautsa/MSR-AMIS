@@ -42,6 +42,8 @@ public class OutstandingReportController implements Initializable {
     private TableColumn<Distribution, String> colDate;
     @FXML
     private TableColumn<Distribution, String> colStatus;
+    @FXML
+    private TableColumn<Distribution, String> colOutstandingRemarks;
 
     private ObservableList<Distribution> data = FXCollections.observableArrayList();
 
@@ -58,6 +60,7 @@ public class OutstandingReportController implements Initializable {
 
         colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colOutstandingRemarks.setCellValueFactory(new PropertyValueFactory<>("outstandingRemarks"));
 
         setupContextMenu();
         loadData();
@@ -113,6 +116,7 @@ public class OutstandingReportController implements Initializable {
                 d.setAssignmentId(rs.getInt("assignment_id"));
                 d.setDistributionDate(parseDate(rs.getString("date")));
                 d.setStatus("OUTSTANDING");
+                d.setOutstandingRemarks(rs.getString("outstanding_remarks"));
 
                 data.add(d);
             }
@@ -162,6 +166,7 @@ public class OutstandingReportController implements Initializable {
                 d.setAssignmentId(rs.getInt("assignment_id"));
                 d.setDistributionDate(parseDate(rs.getString("date")));
                 d.setStatus("OUTSTANDING");
+                d.setOutstandingRemarks(rs.getString("outstanding_remarks"));
 
                 data.add(d);
             }
@@ -201,7 +206,7 @@ public class OutstandingReportController implements Initializable {
 
             FileWriter writer = new FileWriter(file);
 
-            writer.append("Asset Code,Assigned To,Phone,NID,Assignment ID,Date,Status\n");
+            writer.append("Asset Code,Assigned To,Phone,NID,Assignment ID,Date,Status,Outstanding Remarks\n");
 
             for (Distribution d : data) {
                 writer.append(d.getAssetCode()).append(",")
@@ -210,7 +215,8 @@ public class OutstandingReportController implements Initializable {
                       .append(d.getNid()).append(",")
                       .append(String.valueOf(d.getAssignmentId())).append(",") // safe
                       .append(d.getDate()).append(",")
-                      .append(d.getStatus()).append("\n");
+                      .append(d.getStatus()).append(",")
+                      .append(escapeCsv(d.getOutstandingRemarks())).append("\n");
             }
 
             writer.close();
@@ -244,5 +250,13 @@ public class OutstandingReportController implements Initializable {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private String escapeCsv(String value) {
+        String safe = value == null ? "" : value;
+        if (safe.contains(",") || safe.contains("\"") || safe.contains("\n")) {
+            return "\"" + safe.replace("\"", "\"\"") + "\"";
+        }
+        return safe;
     }
 }

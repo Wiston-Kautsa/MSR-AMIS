@@ -9,10 +9,12 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.text.Text;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -51,6 +53,7 @@ public class AssetHistoryController implements Initializable {
         colAffectedPerson.setCellValueFactory(new PropertyValueFactory<>("affectedPerson"));
         colDetails.setCellValueFactory(new PropertyValueFactory<>("details"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        configureTableAppearance();
         tableHistory.setItems(data);
         setupContextMenu();
         clearSummary();
@@ -208,8 +211,8 @@ public class AssetHistoryController implements Initializable {
                             rs.getString("event_type"),
                             rs.getString("actor"),
                             rs.getString("affected_person"),
-                            rs.getString("details"),
-                            rs.getString("status")
+                            formatHistoryDetails(rs.getString("event_type"), rs.getString("details")),
+                            formatStatus(rs.getString("status"))
                     ));
                 }
             }
@@ -230,6 +233,79 @@ public class AssetHistoryController implements Initializable {
         });
         menu.getItems().add(refresh);
         tableHistory.setContextMenu(menu);
+    }
+
+    private void configureTableAppearance() {
+        tableHistory.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        colActivityDate.setPrefWidth(150);
+        colActivityDate.setMinWidth(150);
+        colEventType.setPrefWidth(150);
+        colEventType.setMinWidth(150);
+        colActor.setPrefWidth(220);
+        colActor.setMinWidth(220);
+        colAffectedPerson.setPrefWidth(240);
+        colAffectedPerson.setMinWidth(240);
+        colDetails.setPrefWidth(620);
+        colDetails.setMinWidth(620);
+        colStatus.setPrefWidth(150);
+        colStatus.setMinWidth(150);
+
+        colDetails.setCellFactory(column -> new TableCell<>() {
+            private final Text text = new Text();
+
+            {
+                text.wrappingWidthProperty().bind(column.widthProperty().subtract(24));
+                setGraphic(text);
+                setPrefHeight(USE_COMPUTED_SIZE);
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || item.isBlank()) {
+                    text.setText("");
+                    setGraphic(null);
+                } else {
+                    text.setText(item);
+                    setGraphic(text);
+                }
+            }
+        });
+    }
+
+    private String formatHistoryDetails(String eventType, String details) {
+        if (details == null || details.isBlank()) {
+            return "";
+        }
+
+        String formatted = details.replace(" | ", "\n");
+        if ("RETURNED".equalsIgnoreCase(eventType)) {
+            formatted = formatted.replace("Remarks: returned", "Notes: Returned to store");
+        }
+        return formatted;
+    }
+
+    private String formatStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "";
+        }
+
+        String normalized = status.trim().toLowerCase().replace('_', ' ');
+        String[] words = normalized.split("\\s+");
+        StringBuilder builder = new StringBuilder();
+        for (String word : words) {
+            if (word.isBlank()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(Character.toUpperCase(word.charAt(0)));
+            if (word.length() > 1) {
+                builder.append(word.substring(1));
+            }
+        }
+        return builder.toString();
     }
 
     private void clearSummary() {

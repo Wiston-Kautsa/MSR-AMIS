@@ -11,6 +11,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Dialog;
@@ -21,19 +22,26 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 
 public class UsersController implements Initializable {
     private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+    private static final String DEFAULT_SETUP_DEPARTMENT = "MSR";
 
 
     @FXML private TextField txtName;
     @FXML private PasswordField txtPassword;
+    @FXML private TextField txtPasswordVisible;
+    @FXML private CheckBox chkShowPassword;
     @FXML private ComboBox<String> cmbRole;
     @FXML private ComboBox<String> cmbDepartment;
     @FXML private TextField txtEmail;
     @FXML private Label lblUserStatus;
+    @FXML private Label lblPageSubtitle;
+    @FXML private TitledPane createUserPane;
+    @FXML private TitledPane userDirectoryPane;
 
     @FXML private TableView<User> tableUsers;
 
@@ -48,9 +56,13 @@ public class UsersController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        if (!Session.isSetupMode()) {
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        }
         configureRoleChoices(cmbRole);
         loadDepartments();
+        configurePasswordToggle();
+        configureSetupMode();
 
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colName.setCellValueFactory(new PropertyValueFactory<>("fullName"));
@@ -59,8 +71,40 @@ public class UsersController implements Initializable {
         colEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        setupUsersTableMenu();
-        loadUsers();
+        if (!Session.isSetupMode()) {
+            setupUsersTableMenu();
+            loadUsers();
+        }
+    }
+
+    private void configureSetupMode() {
+        if (!Session.isSetupMode()) {
+            return;
+        }
+
+        if (lblPageSubtitle != null) {
+            lblPageSubtitle.setText("First-time setup detected. Create the main administrator account to continue.");
+        }
+        if (createUserPane != null) {
+            createUserPane.setText("Create Main Administrator Account");
+        }
+        if (userDirectoryPane != null) {
+            userDirectoryPane.setManaged(false);
+            userDirectoryPane.setVisible(false);
+        }
+        if (cmbRole != null) {
+            cmbRole.getItems().setAll(AccessControl.ROLE_ADMIN);
+            cmbRole.setValue(AccessControl.ROLE_ADMIN);
+            cmbRole.setDisable(true);
+        }
+        if (cmbDepartment != null) {
+            if (!cmbDepartment.getItems().contains(DEFAULT_SETUP_DEPARTMENT)) {
+                cmbDepartment.getItems().add(DEFAULT_SETUP_DEPARTMENT);
+            }
+            cmbDepartment.setValue(DEFAULT_SETUP_DEPARTMENT);
+            cmbDepartment.getEditor().setText(DEFAULT_SETUP_DEPARTMENT);
+        }
+        showStatus("Create the first administrator account. The temporary setup account will be disabled afterwards.");
     }
 
     private void setupUsersTableMenu() {
@@ -121,14 +165,20 @@ public class UsersController implements Initializable {
         cmbDepartment.getItems().clear();
         cmbDepartment.getItems().addAll(DatabaseHandler.getDepartments());
         cmbDepartment.setEditable(true);
+        if (Session.isSetupMode()) {
+            cmbDepartment.setValue(DEFAULT_SETUP_DEPARTMENT);
+            cmbDepartment.getEditor().setText(DEFAULT_SETUP_DEPARTMENT);
+        }
     }
 
     @FXML
     private void handleAddUser(ActionEvent event) {
         String name = txtName.getText().trim();
         String email = txtEmail.getText().trim().toLowerCase();
-        String password = txtPassword.getText().trim();
-        String role = cmbRole.getValue() != null ? cmbRole.getValue() : "USER";
+        String password = currentPasswordInput().trim();
+        String role = Session.isSetupMode()
+                ? AccessControl.ROLE_ADMIN
+                : (cmbRole.getValue() != null ? cmbRole.getValue() : AccessControl.ROLE_USER);
         String department = comboText(cmbDepartment);
 
         if (name.isEmpty() || email.isEmpty() || password.isEmpty() || department.isEmpty()) {
@@ -149,16 +199,24 @@ public class UsersController implements Initializable {
         try {
             String hashedPassword = PasswordUtils.hash(password);
             DatabaseHandler.insertUser(name, hashedPassword, role, department, email);
+            if (Session.isSetupMode()) {
+                DatabaseHandler.completeTemporarySetup(email);
+                Session.clear();
+                App.showLoginPage();
+                return;
+            }
 
             clearForm();
             loadDepartments();
             loadUsers();
             showStatus("User information added successfully.");
-
             showAlert("Success", "User added successfully.");
 
         } catch (SecurityException e) {
             showAlert("Access Denied", e.getMessage());
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+            showAlert("Error", "User created, but returning to login failed.");
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Error", "User creation failed.");
@@ -343,10 +401,17 @@ public class UsersController implements Initializable {
     private void clearForm() {
         txtName.clear();
         txtPassword.clear();
+        if (txtPasswordVisible != null) {
+            txtPasswordVisible.clear();
+        }
         txtEmail.clear();
         cmbRole.setValue(null);
+        cmbRole.setDisable(false);
         cmbDepartment.setValue(null);
         cmbDepartment.getEditor().clear();
+        if (chkShowPassword != null) {
+            chkShowPassword.setSelected(false);
+        }
     }
 
     private void showAlert(String title, String msg) {
@@ -397,7 +462,16 @@ public class UsersController implements Initializable {
         }
 
         comboBox.getItems().clear();
-        if (Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
+        if (Session.isSetupMode()) {
+            comboBox.getItems().add(AccessControl.ROLE_ADMIN);
+            comboBox.setValue(AccessControl.ROLE_ADMIN);
+        } else if (Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
+            comboBox.getItems().addAll(
+                    AccessControl.ROLE_SUPER_ADMIN,
+                    AccessControl.ROLE_ADMIN,
+                    AccessControl.ROLE_USER
+            );
+        } else if (Session.hasRole(AccessControl.ROLE_ADMIN)) {
             comboBox.getItems().addAll(
                     AccessControl.ROLE_ADMIN,
                     AccessControl.ROLE_USER
@@ -405,6 +479,30 @@ public class UsersController implements Initializable {
         } else {
             comboBox.getItems().add(AccessControl.ROLE_USER);
         }
+    }
+
+    private void configurePasswordToggle() {
+        if (txtPassword == null || txtPasswordVisible == null || chkShowPassword == null) {
+            return;
+        }
+
+        txtPasswordVisible.textProperty().bindBidirectional(txtPassword.textProperty());
+        txtPasswordVisible.setManaged(false);
+        txtPasswordVisible.setVisible(false);
+
+        chkShowPassword.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            txtPassword.setManaged(!isSelected);
+            txtPassword.setVisible(!isSelected);
+            txtPasswordVisible.setManaged(isSelected);
+            txtPasswordVisible.setVisible(isSelected);
+        });
+    }
+
+    private String currentPasswordInput() {
+        if (chkShowPassword != null && chkShowPassword.isSelected() && txtPasswordVisible != null) {
+            return txtPasswordVisible.getText() == null ? "" : txtPasswordVisible.getText();
+        }
+        return txtPassword == null || txtPassword.getText() == null ? "" : txtPassword.getText();
     }
 
 }

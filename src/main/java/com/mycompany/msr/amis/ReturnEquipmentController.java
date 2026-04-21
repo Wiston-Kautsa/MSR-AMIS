@@ -7,13 +7,17 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -38,8 +42,30 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.HashSet;
 
 public class ReturnEquipmentController implements Initializable {
+    private static final Set<String> ALLOWED_RETURN_CONDITIONS = new HashSet<>(
+            List.of("Returned", "Good", "Fair", "Damaged", "Faulty", "Lost")
+    );
+    private static final int BULK_HEADER_ROW_INDEX = 0;
+    private static final int BULK_DATA_START_ROW_INDEX = BULK_HEADER_ROW_INDEX + 1;
+    private static final String[] BULK_TEMPLATE_HEADERS = {
+            "asset_code_or_imei",
+            "returned_by",
+            "phone",
+            "nid",
+            "condition",
+            "remarks"
+    };
+    private static final String[] BULK_TEMPLATE_SAMPLE = {
+            "MSR-LTP-001",
+            "Jane Banda",
+            "0991234567",
+            "MW123456",
+            "Good",
+            "Returned to store"
+    };
 
     @FXML private ComboBox<String> cmbAssignments;
     @FXML private TextField txtReturnedBy;
@@ -73,10 +99,11 @@ public class ReturnEquipmentController implements Initializable {
     private Assignment selectedAssignment;
     private int requiredReturnQty = 0;
     private File selectedFile;
+    private String pendingOutstandingRemark;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        cmbCondition.getItems().addAll("Good", "Fair", "Damaged", "Faulty", "Lost");
+        cmbCondition.getItems().addAll("Returned", "Good", "Fair", "Damaged", "Faulty", "Lost");
 
         setupTable();
         loadAssignmentsPendingReturn();
@@ -84,7 +111,7 @@ public class ReturnEquipmentController implements Initializable {
         clearAssignmentDetails();
         updateSaveState();
 
-        txtReturnedBy.setEditable(false);
+        txtReturnedBy.setEditable(true);
         cmbAssignments.setOnAction(e -> populateAssignmentDetails());
         txtAssetCode.textProperty().addListener((obs, oldValue, newValue) -> populateReturnedByForAsset(newValue));
     }
@@ -192,6 +219,7 @@ public class ReturnEquipmentController implements Initializable {
         try {
             StagedReturnItem item = buildDraft(
                     txtAssetCode.getText().trim(),
+                    txtReturnedBy.getText().trim(),
                     txtPhone.getText().trim(),
                     txtNid.getText().trim(),
                     cmbCondition.getValue(),
@@ -229,6 +257,11 @@ public class ReturnEquipmentController implements Initializable {
 
         try {
             List<String> newAssetCodes = new ArrayList<>();
+            List<String> remainingAssets = getRemainingAssets();
+
+            if (!remainingAssets.isEmpty()) {
+                DatabaseHandler.updateOutstandingReturnRemarks(remainingAssets, pendingOutstandingRemark);
+            }
 
             for (StagedReturnItem item : stagedReturnItems) {
                 String remarks = item.remarks;
@@ -319,23 +352,40 @@ public class ReturnEquipmentController implements Initializable {
             List<StagedReturnItem> uploadedItems = new ArrayList<>();
             Set<String> uploadedResolvedAssets = new LinkedHashSet<>();
 
-            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            // Row 1 is reserved for the bulk file headers; return entries start on row 2.
+            for (int rowIndex = BULK_DATA_START_ROW_INDEX; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
                 if (row == null) {
                     continue;
                 }
 
                 String identifier = getCellValue(row, 0);
-                String phone = getCellValue(row, 1);
-                String nid = getCellValue(row, 2);
-                String condition = getCellValue(row, 3);
-                String remarks = getCellValue(row, 4);
+                String returnedBy = getCellValue(row, 1);
+                String phone = getCellValue(row, 2);
+                String nid = getCellValue(row, 3);
+                String condition = getCellValue(row, 4);
+                String remarks = getCellValue(row, 5);
 
-                if (identifier.isBlank() && phone.isBlank() && nid.isBlank() && condition.isBlank() && remarks.isBlank()) {
+                if (identifier.isBlank() && returnedBy.isBlank() && phone.isBlank() && nid.isBlank()
+                        && condition.isBlank() && remarks.isBlank()) {
+                    continue;
+                }
+                if (isHeaderLikeRow(identifier, returnedBy, phone, nid, condition, remarks)) {
+                    continue;
+                }
+                if (isSampleRow(identifier, returnedBy, phone, nid, condition, remarks)) {
                     continue;
                 }
 
-                StagedReturnItem item = buildDraft(identifier, phone, nid, condition, remarks, uploadedResolvedAssets);
+                StagedReturnItem item = buildDraft(
+                        identifier,
+                        returnedBy,
+                        phone,
+                        nid,
+                        condition,
+                        remarks,
+                        uploadedResolvedAssets
+                );
                 uploadedItems.add(item);
                 uploadedResolvedAssets.add(item.originalAssetCode);
             }
@@ -390,23 +440,17 @@ public class ReturnEquipmentController implements Initializable {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Return Template");
 
-            String[] headers = {"asset_code_or_imei", "phone", "nid", "condition", "remarks"};
-            String[] sample = {"MSR-LTP-001", "0991234567", "MW123456", "Good", "Returned to store"};
-
-            Row headerRow = sheet.createRow(0);
-            Row sampleRow = sheet.createRow(1);
+            Row headerRow = sheet.createRow(BULK_HEADER_ROW_INDEX);
 
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
 
-            for (int i = 0; i < headers.length; i++) {
+            for (int i = 0; i < BULK_TEMPLATE_HEADERS.length; i++) {
                 Cell headerCell = headerRow.createCell(i);
-                headerCell.setCellValue(headers[i]);
+                headerCell.setCellValue(BULK_TEMPLATE_HEADERS[i]);
                 headerCell.setCellStyle(headerStyle);
-
-                sampleRow.createCell(i).setCellValue(sample[i]);
                 sheet.autoSizeColumn(i);
             }
 
@@ -449,13 +493,15 @@ public class ReturnEquipmentController implements Initializable {
         }
     }
 
-    private StagedReturnItem buildDraft(String identifier, String phone, String nid, String condition, String remarks)
+    private StagedReturnItem buildDraft(String identifier, String returnedBy, String phone, String nid,
+                                        String condition, String remarks)
             throws Exception {
-        return buildDraft(identifier, phone, nid, condition, remarks, stagedResolvedAssetCodes);
+        return buildDraft(identifier, returnedBy, phone, nid, condition, remarks, stagedResolvedAssetCodes);
     }
 
     private StagedReturnItem buildDraft(
             String identifier,
+            String returnedBy,
             String phone,
             String nid,
             String condition,
@@ -465,8 +511,23 @@ public class ReturnEquipmentController implements Initializable {
         if (identifier == null || identifier.isBlank()) {
             throw new Exception("Asset Code / New IMEI is required.");
         }
+        if (returnedBy == null || returnedBy.isBlank()) {
+            throw new Exception("Returned By is required.");
+        }
+        if (phone == null || phone.isBlank()) {
+            throw new Exception("Phone is required.");
+        }
+        if (nid == null || nid.isBlank()) {
+            throw new Exception("NID is required.");
+        }
         if (condition == null || condition.isBlank()) {
             throw new Exception("Please select a condition.");
+        }
+        if (!ALLOWED_RETURN_CONDITIONS.contains(condition.trim())) {
+            throw new Exception(
+                    "Invalid return condition: " + condition +
+                            ". Use one of: " + String.join(", ", ALLOWED_RETURN_CONDITIONS) + "."
+            );
         }
 
         String trimmedIdentifier = identifier.trim();
@@ -486,18 +547,12 @@ public class ReturnEquipmentController implements Initializable {
             throw new Exception("This asset has already been entered in the current save batch.");
         }
 
-        Distribution distribution = DatabaseHandler.getCurrentDistributionForAsset(originalAssetCode);
-        String returnedBy = distribution == null ? "" : distribution.getAssignedTo();
-        if (returnedBy.isBlank()) {
-            throw new Exception("The assigned person for this asset could not be found.");
-        }
-
-        txtReturnedBy.setText(returnedBy);
+        String normalizedReturnedBy = returnedBy.trim();
 
         return new StagedReturnItem(
                 originalAssetCode,
                 trimmedIdentifier,
-                returnedBy,
+                normalizedReturnedBy,
                 phone,
                 nid,
                 condition,
@@ -516,35 +571,94 @@ public class ReturnEquipmentController implements Initializable {
     }
 
     private boolean confirmSaveWithRemainingItems() {
-        List<String> remainingAssets = new ArrayList<>();
-        for (String assetCode : outstandingAssetCodes) {
-            if (!stagedResolvedAssetCodes.contains(assetCode)) {
-                remainingAssets.add(assetCode);
-            }
-        }
+        List<String> remainingAssets = getRemainingAssets();
 
         long replacementCount = stagedReturnItems.stream().filter(item -> item.replacement).count();
         if (remainingAssets.isEmpty() && replacementCount == 0) {
+            pendingOutstandingRemark = "";
             return true;
         }
 
-        StringBuilder message = new StringBuilder("Save the current returns now?");
-        if (!remainingAssets.isEmpty()) {
-            message.append("\n\nThese assets will remain outstanding:\n")
-                    .append(String.join("\n", remainingAssets));
-        }
-        if (replacementCount > 0) {
-            message.append("\n\n")
-                    .append(replacementCount)
-                    .append(" replacement item(s) will be added as new equipment and given new asset codes.");
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Complete Return Save");
+        dialog.setHeaderText("Capture the reason for equipment that is still outstanding.");
+
+        ButtonType saveButtonType = new ButtonType("Save Returns", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+        dialog.getDialogPane().getStyleClass().add("reset-dialog");
+
+        VBox content = new VBox(14);
+        content.getStyleClass().add("reset-dialog-content");
+
+        Label title = new Label("Outstanding Items");
+        title.getStyleClass().add("reset-dialog-section-title");
+
+        Label helper = new Label(
+                remainingAssets.isEmpty()
+                        ? "All selected items will be saved now."
+                        : "The assets below will remain outstanding after this save. Enter a remark explaining why they were not returned."
+        );
+        helper.setWrapText(true);
+        helper.getStyleClass().add("reset-dialog-helper");
+
+        TextArea outstandingList = new TextArea(String.join("\n", remainingAssets));
+        outstandingList.setEditable(false);
+        outstandingList.setWrapText(true);
+        outstandingList.setPrefRowCount(Math.min(Math.max(remainingAssets.size(), 2), 6));
+        outstandingList.getStyleClass().add("feedback-content");
+        outstandingList.setManaged(!remainingAssets.isEmpty());
+        outstandingList.setVisible(!remainingAssets.isEmpty());
+
+        Label remarkLabel = new Label("Reason For Outstanding Equipment");
+        remarkLabel.getStyleClass().add("reset-dialog-field-label");
+        remarkLabel.setManaged(!remainingAssets.isEmpty());
+        remarkLabel.setVisible(!remainingAssets.isEmpty());
+
+        TextArea remarkArea = new TextArea();
+        remarkArea.setPromptText("Example: 4 tablets are still with field team and will be returned after supervision closes on Friday.");
+        remarkArea.setWrapText(true);
+        remarkArea.setPrefRowCount(4);
+        remarkArea.getStyleClass().add("reset-dialog-input");
+        remarkArea.setManaged(!remainingAssets.isEmpty());
+        remarkArea.setVisible(!remainingAssets.isEmpty());
+
+        Label replacementLabel = new Label(
+                replacementCount > 0
+                        ? replacementCount + " replacement item(s) will be added as new equipment and given new asset codes."
+                        : ""
+        );
+        replacementLabel.setWrapText(true);
+        replacementLabel.getStyleClass().add("reset-dialog-helper");
+        replacementLabel.setManaged(replacementCount > 0);
+        replacementLabel.setVisible(replacementCount > 0);
+
+        content.getChildren().addAll(title, helper, outstandingList, remarkLabel, remarkArea, replacementLabel);
+        dialog.getDialogPane().setContent(content);
+
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
+        if (saveButton != null) {
+            saveButton.setDisable(!remainingAssets.isEmpty());
+            remarkArea.textProperty().addListener((obs, oldValue, newValue) -> {
+                if (!remainingAssets.isEmpty()) {
+                    saveButton.setDisable(newValue == null || newValue.trim().isEmpty());
+                }
+            });
         }
 
-        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmation.setTitle("Confirm Save");
-        confirmation.setHeaderText(null);
-        confirmation.setContentText(message.toString());
-        Optional<ButtonType> result = confirmation.showAndWait();
-        return result.isPresent() && result.get() == ButtonType.OK;
+        dialog.setResultConverter(button -> {
+            if (button == saveButtonType) {
+                return remarkArea.getText() == null ? "" : remarkArea.getText().trim();
+            }
+            return null;
+        });
+
+        Optional<String> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return false;
+        }
+
+        pendingOutstandingRemark = remainingAssets.isEmpty() ? "" : result.get();
+        return true;
     }
 
     private void showInfo(String msg) {
@@ -604,6 +718,7 @@ public class ReturnEquipmentController implements Initializable {
         }
         clearAssignmentDetails();
         clearEntryFields();
+        pendingOutstandingRemark = "";
         updateSaveState();
     }
 
@@ -646,6 +761,36 @@ public class ReturnEquipmentController implements Initializable {
             return extraRemark;
         }
         return existingRemarks + " | " + extraRemark;
+    }
+
+    private List<String> getRemainingAssets() {
+        List<String> remainingAssets = new ArrayList<>();
+        for (String assetCode : outstandingAssetCodes) {
+            if (!stagedResolvedAssetCodes.contains(assetCode)) {
+                remainingAssets.add(assetCode);
+            }
+        }
+        return remainingAssets;
+    }
+
+    private boolean isHeaderLikeRow(String identifier, String returnedBy, String phone, String nid,
+                                    String condition, String remarks) {
+        return BULK_TEMPLATE_HEADERS[0].equalsIgnoreCase(identifier)
+                && BULK_TEMPLATE_HEADERS[1].equalsIgnoreCase(returnedBy)
+                && BULK_TEMPLATE_HEADERS[2].equalsIgnoreCase(phone)
+                && BULK_TEMPLATE_HEADERS[3].equalsIgnoreCase(nid)
+                && BULK_TEMPLATE_HEADERS[4].equalsIgnoreCase(condition)
+                && BULK_TEMPLATE_HEADERS[5].equalsIgnoreCase(remarks);
+    }
+
+    private boolean isSampleRow(String identifier, String returnedBy, String phone, String nid,
+                                String condition, String remarks) {
+        return BULK_TEMPLATE_SAMPLE[0].equalsIgnoreCase(identifier)
+                && BULK_TEMPLATE_SAMPLE[1].equalsIgnoreCase(returnedBy)
+                && BULK_TEMPLATE_SAMPLE[2].equalsIgnoreCase(phone)
+                && BULK_TEMPLATE_SAMPLE[3].equalsIgnoreCase(nid)
+                && BULK_TEMPLATE_SAMPLE[4].equalsIgnoreCase(condition)
+                && BULK_TEMPLATE_SAMPLE[5].equalsIgnoreCase(remarks);
     }
 
     private static final class StagedReturnItem {

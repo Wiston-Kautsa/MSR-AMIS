@@ -37,7 +37,8 @@
                 <TableColumn fx:id="colEquipmentName" text="Equipment Name" prefWidth="140"/>
                 <TableColumn fx:id="colCategory" text="Category" prefWidth="110"/>
                 <TableColumn fx:id="colSource" text="Source" prefWidth="120"/>
-                <TableColumn fx:id="colDateTaken" text="Date Taken" prefWidth="110"/>
+                <TableColumn fx:id="colResponsibleOfficer" text="Responsible Officer" prefWidth="160"/>
+                <TableColumn fx:id="colDateTaken" text="Date Given Out" prefWidth="120"/>
                 <TableColumn fx:id="colReason" text="Reason" prefWidth="180"/>
                 <TableColumn fx:id="colReturnedBy" text="Returned By" prefWidth="120"/>
                 <TableColumn fx:id="colPhone" text="Phone" prefWidth="110"/>

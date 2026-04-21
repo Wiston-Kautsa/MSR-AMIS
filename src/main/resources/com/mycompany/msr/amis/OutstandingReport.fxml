@@ -38,6 +38,7 @@
                 <TableColumn fx:id="colAssignmentId" text="Assignment ID" prefWidth="120"/>
                 <TableColumn fx:id="colDate" text="Issued Date" prefWidth="140"/>
                 <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+                <TableColumn fx:id="colOutstandingRemarks" text="Outstanding Remarks" prefWidth="280"/>
             </columns>
         </TableView>
 

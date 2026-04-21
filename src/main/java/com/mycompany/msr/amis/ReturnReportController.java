@@ -34,6 +34,7 @@ public class ReturnReportController implements Initializable {
     @FXML private TableColumn<ReturnRecord, String> colEquipmentName;
     @FXML private TableColumn<ReturnRecord, String> colCategory;
     @FXML private TableColumn<ReturnRecord, String> colSource;
+    @FXML private TableColumn<ReturnRecord, String> colResponsibleOfficer;
     @FXML private TableColumn<ReturnRecord, String> colDateTaken;
     @FXML private TableColumn<ReturnRecord, String> colReason;
     @FXML private TableColumn<ReturnRecord, String> colReturnedBy;
@@ -47,13 +48,14 @@ public class ReturnReportController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        cmbCondition.getItems().addAll("Good", "Fair", "Damaged", "Faulty", "Lost");
+        cmbCondition.getItems().addAll("Returned", "Good", "Fair", "Damaged", "Faulty", "Lost");
 
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colSerialNumber.setCellValueFactory(new PropertyValueFactory<>("serialNumber"));
         colEquipmentName.setCellValueFactory(new PropertyValueFactory<>("equipmentName"));
         colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));
         colSource.setCellValueFactory(new PropertyValueFactory<>("source"));
+        colResponsibleOfficer.setCellValueFactory(new PropertyValueFactory<>("responsibleOfficer"));
         colDateTaken.setCellValueFactory(new PropertyValueFactory<>("dateTaken"));
         colReason.setCellValueFactory(new PropertyValueFactory<>("assignmentReason"));
         colReturnedBy.setCellValueFactory(new PropertyValueFactory<>("returnedBy"));
@@ -89,7 +91,7 @@ public class ReturnReportController implements Initializable {
 
         String sql =
                 "SELECT r.asset_code, e.serial_number, e.name, e.category, e.source, d.date AS date_taken, " +
-                "a.reason AS assignment_reason, " +
+                "a.person AS responsible_officer, a.equipment_type AS assignment_equipment_type, a.reason AS assignment_reason, " +
                 "r.returned_by, r.phone, r.nid, r.condition, r.remarks, r.return_date " +
                 "FROM returns r " +
                 "LEFT JOIN distribution d ON d.id = (" +
@@ -124,7 +126,7 @@ public class ReturnReportController implements Initializable {
 
         String sql =
                 "SELECT r.asset_code, e.serial_number, e.name, e.category, e.source, d.date AS date_taken, " +
-                "a.reason AS assignment_reason, " +
+                "a.person AS responsible_officer, a.equipment_type AS assignment_equipment_type, a.reason AS assignment_reason, " +
                 "r.returned_by, r.phone, r.nid, r.condition, r.remarks, r.return_date " +
                 "FROM returns r " +
                 "LEFT JOIN distribution d ON d.id = (" +
@@ -193,7 +195,7 @@ public class ReturnReportController implements Initializable {
             );
 
             try (FileWriter writer = new FileWriter(file)) {
-                writer.append("Asset Code,IMEI/Serial Number,Equipment Name,Category,Source,Date Taken,Reason,Returned By,Phone,NID,Return Condition,Remarks,Date Returned\n");
+                writer.append("Asset Code,IMEI/Serial Number,Equipment Name,Category,Source,Responsible Officer,Date Given Out,Reason,Returned By,Phone,NID,Return Condition,Remarks,Date Returned\n");
 
                 for (ReturnRecord record : data) {
                     writer.append(csvSafe(record.getAssetCode())).append(",")
@@ -201,6 +203,7 @@ public class ReturnReportController implements Initializable {
                             .append(csvSafe(record.getEquipmentName())).append(",")
                             .append(csvSafe(record.getCategory())).append(",")
                             .append(csvSafe(record.getSource())).append(",")
+                            .append(csvSafe(record.getResponsibleOfficer())).append(",")
                             .append(csvSafe(record.getDateTaken())).append(",")
                             .append(csvSafe(record.getAssignmentReason())).append(",")
                             .append(csvSafe(record.getReturnedBy())).append(",")
@@ -234,8 +237,8 @@ public class ReturnReportController implements Initializable {
                 rs.getString("category"),
                 rs.getString("source"),
                 rs.getString("date_taken"),
-                null,
-                null,
+                rs.getString("responsible_officer"),
+                rs.getString("assignment_equipment_type"),
                 rs.getString("assignment_reason"),
                 rs.getString("returned_by"),
                 rs.getString("phone"),

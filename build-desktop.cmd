@@ -12,6 +12,7 @@ set "DIST_DIR=%BUILD_ROOT%dist"
 set "APP_DIR=%DIST_DIR%\%APP_NAME%"
 set "INSTALLER_BASENAME=%APP_NAME%-%APP_VERSION%"
 set "INSTALLER_EXE=%DIST_DIR%\%INSTALLER_BASENAME%.exe"
+set "INSTALLER_MSI=%DIST_DIR%\%INSTALLER_BASENAME%.msi"
 set "JAVAFX_VERSION=17.0.8"
 set "M2_REPO=%USERPROFILE%\.m2\repository"
 set "JAVAFX_MODULE_PATH=%M2_REPO%\org\openjfx\javafx-base\%JAVAFX_VERSION%\javafx-base-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-graphics\%JAVAFX_VERSION%\javafx-graphics-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-controls\%JAVAFX_VERSION%\javafx-controls-%JAVAFX_VERSION%-win.jar;%M2_REPO%\org\openjfx\javafx-fxml\%JAVAFX_VERSION%\javafx-fxml-%JAVAFX_VERSION%-win.jar"
@@ -34,6 +35,13 @@ if exist "%INSTALLER_EXE%" (
   echo.
   echo Close the generated installer and try again. Output file is locked:
   echo %INSTALLER_EXE%
+  exit /b 1
+)
+if exist "%INSTALLER_MSI%" del /f /q "%INSTALLER_MSI%"
+if exist "%INSTALLER_MSI%" (
+  echo.
+  echo Close the generated installer and try again. Output file is locked:
+  echo %INSTALLER_MSI%
   exit /b 1
 )
 
@@ -70,6 +78,23 @@ if not defined HAS_WIX (
 if not defined HAS_WIX goto :no_wix
 
 jpackage ^
+  --type msi ^
+  --name "%APP_NAME%" ^
+  --app-version "%APP_VERSION%" ^
+  --dest "%DIST_DIR%" ^
+  --app-image "%APP_DIR%" ^
+  --vendor "MSR AMIS" ^
+  --win-dir-chooser ^
+  --win-menu ^
+  --win-menu-group "%APP_NAME%" ^
+  --win-shortcut ^
+  --win-shortcut-prompt ^
+  --win-per-user-install ^
+  --win-upgrade-uuid "%UPGRADE_UUID%"
+
+if errorlevel 1 goto :fail
+
+jpackage ^
   --type exe ^
   --name "%APP_NAME%" ^
   --app-version "%APP_VERSION%" ^
@@ -89,6 +114,9 @@ if errorlevel 1 goto :fail
 echo.
 echo Desktop app image created successfully:
 echo %APP_DIR%
+echo.
+echo Windows MSI installer created successfully:
+echo %INSTALLER_MSI%
 echo.
 echo Windows installer created successfully:
 echo %INSTALLER_EXE%

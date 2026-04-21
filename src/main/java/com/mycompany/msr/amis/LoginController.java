@@ -3,20 +3,17 @@ package com.mycompany.msr.amis;
 import java.io.IOException;
 import java.net.URL;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.ResourceBundle;
-import javafx.event.ActionEvent;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.Node;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 public class LoginController implements Initializable {
 
@@ -26,6 +23,17 @@ public class LoginController implements Initializable {
     @FXML private CheckBox chkShowPassword;
     @FXML private Label lblLoginStatus;
     @FXML private Label lblDefaultAdmin;
+
+    @FXML private VBox loginPanel;
+    @FXML private VBox resetPanel;
+    @FXML private TextField txtResetIdentifier;
+    @FXML private TextField txtResetCode;
+    @FXML private PasswordField txtResetNewPassword;
+    @FXML private PasswordField txtResetConfirmPassword;
+    @FXML private Label lblResetStatus;
+    @FXML private HBox resetStatusBanner;
+    @FXML private Button btnSendResetCode;
+    @FXML private Button btnResetPassword;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -43,8 +51,10 @@ public class LoginController implements Initializable {
         }
 
         if (lblDefaultAdmin != null) {
-            lblDefaultAdmin.setText("Default Admin: admin@msr.local / admin123");
+            lblDefaultAdmin.setText("Initial setup account: admin@msr.local / admin123");
         }
+
+        showLoginPanel();
     }
 
     @FXML
@@ -71,6 +81,12 @@ public class LoginController implements Initializable {
 
         try {
             Session.setCurrentUser(user);
+            if (DatabaseHandler.isTemporarySetupAccount(user)) {
+                Session.setSetupMode(true);
+                App.showSetupUsersPage();
+                return;
+            }
+            Session.setSetupMode(false);
             App.showDashboardPage();
         } catch (SecurityException e) {
             showStatus(e.getMessage());
@@ -81,60 +97,39 @@ public class LoginController implements Initializable {
     }
 
     @FXML
-    private void handleResetPassword() {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Forgot Password");
+    private void showResetPanel() {
+        if (txtResetIdentifier != null && (txtResetIdentifier.getText() == null || txtResetIdentifier.getText().isBlank())) {
+            txtResetIdentifier.setText(txtEmail.getText() == null ? "" : txtEmail.getText().trim().toLowerCase());
+        }
+        switchPanel(false);
+        clearResetInputFields(false);
+        setResetStatus("Ready to send a reset code.", "info");
+    }
 
-        TextField identifierField = new TextField(txtEmail.getText() == null ? "" : txtEmail.getText().trim().toLowerCase());
-        TextField codeField = new TextField();
-        PasswordField newPasswordField = new PasswordField();
-        PasswordField confirmPasswordField = new PasswordField();
-        Label statusLabel = new Label("Enter your registered email address or username.");
+    @FXML
+    private void showLoginPanel() {
+        switchPanel(true);
+        if (chkShowPassword != null) {
+            chkShowPassword.setSelected(false);
+        }
+    }
 
-        identifierField.setPromptText("Email or username");
-        codeField.setPromptText("Reset code");
-        newPasswordField.setPromptText("New password");
-        confirmPasswordField.setPromptText("Confirm password");
-        statusLabel.setWrapText(true);
+    @FXML
+    private void handleSendResetCode() {
+        String identifier = normalized(txtResetIdentifier.getText());
+        if (identifier.isBlank()) {
+            setResetStatus("Enter your registered email address or username.", "error");
+            return;
+        }
 
-        setResetFieldsEnabled(codeField, newPasswordField, confirmPasswordField, false);
+        btnSendResetCode.setDisable(true);
+        btnResetPassword.setDisable(true);
+        setResetFieldsEnabled(false);
+        setResetStatus("Sending reset code to your registered account...", "progress");
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.add(new Label("Email / Username:"), 0, 0);
-        grid.add(identifierField, 1, 0);
-        grid.add(new Label("Reset Code:"), 0, 1);
-        grid.add(codeField, 1, 1);
-        grid.add(new Label("New Password:"), 0, 2);
-        grid.add(newPasswordField, 1, 2);
-        grid.add(new Label("Confirm Password:"), 0, 3);
-        grid.add(confirmPasswordField, 1, 3);
-        grid.add(statusLabel, 0, 4, 2, 1);
-
-        dialog.getDialogPane().setContent(grid);
-        ButtonType sendCodeType = new ButtonType("Send Reset Code", ButtonBar.ButtonData.LEFT);
-        ButtonType resetType = new ButtonType("Reset Password", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(
-                sendCodeType,
-                resetType,
-                ButtonType.CANCEL
-        );
-
-        Node sendCodeButton = dialog.getDialogPane().lookupButton(sendCodeType);
-        Node resetButton = dialog.getDialogPane().lookupButton(resetType);
-        resetButton.setDisable(true);
-
-        sendCodeButton.addEventFilter(ActionEvent.ACTION, event -> {
-            event.consume();
-
-            String identifier = normalized(identifierField.getText());
-            if (identifier.isBlank()) {
-                statusLabel.setText("Enter your registered email address or username.");
-                return;
-            }
-
-            try {
+        Task<String> sendResetTask = new Task<>() {
+            @Override
+            protected String call() throws Exception {
                 String resetCode = PasswordUtils.generateNumericCode(6);
                 String recipientEmail = DatabaseHandler.issuePasswordResetCode(
                         identifier,
@@ -143,54 +138,72 @@ public class LoginController implements Initializable {
                 );
                 try {
                     EmailService.sendPasswordResetCode(recipientEmail, resetCode);
+                    return recipientEmail;
                 } catch (Exception e) {
                     DatabaseHandler.clearPasswordResetCode(identifier);
                     throw e;
                 }
-                setResetFieldsEnabled(codeField, newPasswordField, confirmPasswordField, true);
-                resetButton.setDisable(false);
-                statusLabel.setText("A reset code was sent to " + maskEmail(recipientEmail) + ". It expires in 10 minutes.");
-            } catch (Exception e) {
-                statusLabel.setText(e.getMessage());
             }
+        };
+
+        sendResetTask.setOnSucceeded(workerStateEvent -> {
+            btnSendResetCode.setDisable(false);
+            setResetFieldsEnabled(true);
+            btnResetPassword.setDisable(false);
+            setResetStatus("Reset code sent to " + maskEmail(sendResetTask.getValue()) + ". It expires in 10 minutes.", "success");
         });
 
-        resetButton.addEventFilter(ActionEvent.ACTION, event -> {
-            event.consume();
-
-            String identifier = normalized(identifierField.getText());
-            String resetCode = normalized(codeField.getText());
-            String newPassword = newPasswordField.getText() == null ? "" : newPasswordField.getText();
-            String confirmPassword = confirmPasswordField.getText() == null ? "" : confirmPasswordField.getText();
-
-            if (identifier.isBlank() || resetCode.isBlank() || newPassword.isBlank() || confirmPassword.isBlank()) {
-                statusLabel.setText("Enter your account, reset code, and the new password twice.");
-                return;
-            }
-
-            if (!newPassword.equals(confirmPassword)) {
-                statusLabel.setText("Passwords do not match.");
-                return;
-            }
-
-            try {
-                DatabaseHandler.resetPasswordWithCode(identifier, resetCode, PasswordUtils.hash(newPassword));
-                txtEmail.setText(identifier);
-                txtPassword.clear();
-                showStatus("Password reset successfully. Sign in with the new password.");
-                dialog.setResult(ButtonType.OK);
-                dialog.close();
-            } catch (Exception e) {
-                statusLabel.setText(e.getMessage());
-            }
+        sendResetTask.setOnFailed(workerStateEvent -> {
+            btnSendResetCode.setDisable(false);
+            btnResetPassword.setDisable(true);
+            Throwable failure = sendResetTask.getException();
+            setResetStatus(
+                    failure == null || failure.getMessage() == null || failure.getMessage().isBlank()
+                            ? "Failed to send reset code."
+                            : failure.getMessage(),
+                    "error"
+            );
         });
 
-        Optional<ButtonType> result = dialog.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            if (chkShowPassword != null) {
-                chkShowPassword.setSelected(false);
-            }
+        Thread sendResetThread = new Thread(sendResetTask, "password-reset-email");
+        sendResetThread.setDaemon(true);
+        sendResetThread.start();
+    }
+
+    @FXML
+    private void handleSubmitPasswordReset() {
+        String identifier = normalized(txtResetIdentifier.getText());
+        String resetCode = normalized(txtResetCode.getText());
+        String newPassword = txtResetNewPassword.getText() == null ? "" : txtResetNewPassword.getText();
+        String confirmPassword = txtResetConfirmPassword.getText() == null ? "" : txtResetConfirmPassword.getText();
+
+        if (identifier.isBlank() || resetCode.isBlank() || newPassword.isBlank() || confirmPassword.isBlank()) {
+            setResetStatus("Complete every field before resetting the password.", "error");
+            return;
         }
+
+        if (!newPassword.equals(confirmPassword)) {
+            setResetStatus("The new password and confirmation do not match.", "error");
+            return;
+        }
+
+        try {
+            DatabaseHandler.resetPasswordWithCode(identifier, resetCode, PasswordUtils.hash(newPassword));
+            txtEmail.setText(identifier);
+            txtPassword.clear();
+            clearResetInputFields(true);
+            setResetStatus("Password updated successfully. Sign in with the new password.", "success");
+            showStatus("Password reset successfully. Sign in with the new password.");
+            showLoginPanel();
+        } catch (Exception e) {
+            setResetStatus(e.getMessage(), "error");
+        }
+    }
+
+    @FXML
+    private void clearResetFields() {
+        clearResetInputFields(true);
+        setResetStatus("Ready to send a reset code.", "info");
     }
 
     @FXML
@@ -209,11 +222,72 @@ public class LoginController implements Initializable {
         }
     }
 
-    private void setResetFieldsEnabled(TextField codeField, PasswordField newPasswordField,
-                                       PasswordField confirmPasswordField, boolean enabled) {
-        codeField.setDisable(!enabled);
-        newPasswordField.setDisable(!enabled);
-        confirmPasswordField.setDisable(!enabled);
+    private void switchPanel(boolean showLogin) {
+        if (loginPanel != null) {
+            loginPanel.setManaged(showLogin);
+            loginPanel.setVisible(showLogin);
+        }
+        if (resetPanel != null) {
+            resetPanel.setManaged(!showLogin);
+            resetPanel.setVisible(!showLogin);
+        }
+    }
+
+    private void clearResetInputFields(boolean clearIdentifier) {
+        if (clearIdentifier && txtResetIdentifier != null) {
+            txtResetIdentifier.clear();
+        }
+        if (txtResetCode != null) {
+            txtResetCode.clear();
+        }
+        if (txtResetNewPassword != null) {
+            txtResetNewPassword.clear();
+        }
+        if (txtResetConfirmPassword != null) {
+            txtResetConfirmPassword.clear();
+        }
+        setResetFieldsEnabled(false);
+        if (btnSendResetCode != null) {
+            btnSendResetCode.setDisable(false);
+        }
+        if (btnResetPassword != null) {
+            btnResetPassword.setDisable(true);
+        }
+    }
+
+    private void setResetFieldsEnabled(boolean enabled) {
+        if (txtResetCode != null) {
+            txtResetCode.setDisable(!enabled);
+        }
+        if (txtResetNewPassword != null) {
+            txtResetNewPassword.setDisable(!enabled);
+        }
+        if (txtResetConfirmPassword != null) {
+            txtResetConfirmPassword.setDisable(!enabled);
+        }
+    }
+
+    private void setResetStatus(String message, String tone) {
+        if (lblResetStatus != null) {
+            lblResetStatus.setText(message == null ? "" : message);
+        }
+        if (resetStatusBanner != null) {
+            resetStatusBanner.getStyleClass().removeAll("status-info", "status-success", "status-error", "status-progress");
+            switch (tone == null ? "" : tone) {
+                case "success":
+                    resetStatusBanner.getStyleClass().add("status-success");
+                    break;
+                case "progress":
+                    resetStatusBanner.getStyleClass().add("status-progress");
+                    break;
+                case "error":
+                    resetStatusBanner.getStyleClass().add("status-error");
+                    break;
+                default:
+                    resetStatusBanner.getStyleClass().add("status-info");
+                    break;
+            }
+        }
     }
 
     private String normalized(String value) {

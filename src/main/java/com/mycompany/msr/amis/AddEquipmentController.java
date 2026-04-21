@@ -22,6 +22,22 @@ import java.time.LocalDate;
 import java.util.ResourceBundle;
 
 public class AddEquipmentController implements Initializable {
+    private static final int BULK_HEADER_ROW_INDEX = 0;
+    private static final int BULK_DATA_START_ROW_INDEX = BULK_HEADER_ROW_INDEX + 1;
+    private static final String[] BULK_TEMPLATE_HEADERS = {
+            "name",
+            "category",
+            "imei_serial_number",
+            "source",
+            "condition"
+    };
+    private static final String[] BULK_TEMPLATE_SAMPLE = {
+            "Tablet",
+            "Tablet",
+            "SN-001",
+            "World Bank",
+            "New"
+    };
 
     // ================= UI =================
     @FXML private TextField txtName;
@@ -187,36 +203,17 @@ public class AddEquipmentController implements Initializable {
         try (Workbook wb = new XSSFWorkbook()) {
             Sheet sheet = wb.createSheet("Equipment Template");
 
-            String[] headers = {
-                    "name",
-                    "category",
-                    "imei_serial_number",
-                    "source",
-                    "condition"
-            };
-
-            String[] sample = {
-                    "Tablet",
-                    "Tablet",
-                    "SN-001",
-                    "World Bank",
-                    "New"
-            };
-
-            Row headerRow = sheet.createRow(0);
-            Row sampleRow = sheet.createRow(1);
+            Row headerRow = sheet.createRow(BULK_HEADER_ROW_INDEX);
 
             CellStyle headerStyle = wb.createCellStyle();
             Font headerFont = wb.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
 
-            for (int i = 0; i < headers.length; i++) {
+            for (int i = 0; i < BULK_TEMPLATE_HEADERS.length; i++) {
                 Cell headerCell = headerRow.createCell(i);
-                headerCell.setCellValue(headers[i]);
+                headerCell.setCellValue(BULK_TEMPLATE_HEADERS[i]);
                 headerCell.setCellStyle(headerStyle);
-
-                sampleRow.createCell(i).setCellValue(sample[i]);
                 sheet.autoSizeColumn(i);
             }
 
@@ -259,7 +256,7 @@ public class AddEquipmentController implements Initializable {
 
             Sheet sheet = wb.getSheetAt(0);
 
-            if (sheet.getRow(0) == null || sheet.getRow(0).getLastCellNum() < 5) {
+            if (sheet.getRow(BULK_HEADER_ROW_INDEX) == null || sheet.getRow(BULK_HEADER_ROW_INDEX).getLastCellNum() < 5) {
                 OperationFeedbackHelper.showError(
                     "Invalid File",
                     "The Excel file must contain 5 columns."
@@ -269,7 +266,8 @@ public class AddEquipmentController implements Initializable {
 
             int inserted = 0;
 
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            // Row 1 is reserved for column titles; actual bulk data starts on row 2.
+            for (int i = BULK_DATA_START_ROW_INDEX; i <= sheet.getLastRowNum(); i++) {
 
                 Row r = sheet.getRow(i);
                 if (r == null) continue;
@@ -277,16 +275,20 @@ public class AddEquipmentController implements Initializable {
                 String name = getCell(r, 0);
                 String category = getCell(r, 1);
                 String serial = getCell(r, 2);
+                String source = getCell(r, 3);
+                String condition = getCell(r, 4);
 
                 // skip empty rows
                 if (name.isEmpty() || category.isEmpty() || serial.isEmpty()) continue;
+                if (isHeaderLikeRow(name, category, serial, source, condition)) continue;
+                if (isSampleRow(name, category, serial, source, condition)) continue;
 
                 Equipment eq = new Equipment(
                         name,
                         category,
                         serial,
-                        getCell(r, 3),
-                        getCell(r, 4),
+                        source,
+                        condition,
                         LocalDate.now().toString()
                 );
 
@@ -345,6 +347,22 @@ public class AddEquipmentController implements Initializable {
         }
 
         return "";
+    }
+
+    private boolean isHeaderLikeRow(String name, String category, String serial, String source, String condition) {
+        return BULK_TEMPLATE_HEADERS[0].equalsIgnoreCase(name)
+                && BULK_TEMPLATE_HEADERS[1].equalsIgnoreCase(category)
+                && BULK_TEMPLATE_HEADERS[2].equalsIgnoreCase(serial)
+                && BULK_TEMPLATE_HEADERS[3].equalsIgnoreCase(source)
+                && BULK_TEMPLATE_HEADERS[4].equalsIgnoreCase(condition);
+    }
+
+    private boolean isSampleRow(String name, String category, String serial, String source, String condition) {
+        return BULK_TEMPLATE_SAMPLE[0].equalsIgnoreCase(name)
+                && BULK_TEMPLATE_SAMPLE[1].equalsIgnoreCase(category)
+                && BULK_TEMPLATE_SAMPLE[2].equalsIgnoreCase(serial)
+                && BULK_TEMPLATE_SAMPLE[3].equalsIgnoreCase(source)
+                && BULK_TEMPLATE_SAMPLE[4].equalsIgnoreCase(condition);
     }
 
     // ================= ALERTS =================

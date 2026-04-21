@@ -3,6 +3,7 @@ package com.mycompany.msr.amis;
 public final class Session {
 
     private static User currentUser;
+    private static boolean setupMode;
 
     private Session() {
     }
@@ -15,8 +16,17 @@ public final class Session {
         return currentUser;
     }
 
+    public static void setSetupMode(boolean enabled) {
+        setupMode = enabled;
+    }
+
+    public static boolean isSetupMode() {
+        return setupMode;
+    }
+
     public static void clear() {
         currentUser = null;
+        setupMode = false;
     }
 
     public static boolean hasRole(String... allowedRoles) {

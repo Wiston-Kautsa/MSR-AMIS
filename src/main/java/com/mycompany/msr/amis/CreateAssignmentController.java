@@ -66,7 +66,7 @@ public class CreateAssignmentController implements Initializable {
         }
 
         if (cmbEquipmentType != null) {
-            cmbEquipmentType.setPromptText("Select Equipment Group");
+            cmbEquipmentType.setPromptText("Select Existing Category");
             cmbEquipmentType.setOnAction(event -> updateAvailableStockLabel());
         }
 
@@ -125,7 +125,7 @@ public class CreateAssignmentController implements Initializable {
 
         String type = cmbEquipmentType != null ? cmbEquipmentType.getValue() : null;
         if (type == null || type.isBlank()) {
-            lblAvailableStock.setText("Available in stock: Select equipment group");
+            lblAvailableStock.setText("Available in stock: Select existing category");
             return;
         }
 
@@ -213,7 +213,7 @@ public class CreateAssignmentController implements Initializable {
         }
 
         if (person.isEmpty() || type.isEmpty() || reason.isEmpty() || qtyText.isEmpty()) {
-            showWarning("Missing Fields", "Responsible person, equipment group, reason, and quantity are required.");
+            showWarning("Missing Fields", "Responsible person, equipment category, reason, and quantity are required.");
             return;
         }
 

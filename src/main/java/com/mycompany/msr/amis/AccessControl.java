@@ -3,6 +3,7 @@ package com.mycompany.msr.amis;
 public final class AccessControl {
 
     public static final String PRIMARY_SUPER_ADMIN_EMAIL = "wkautsa@gmail.com";
+    public static final String TEMPORARY_SETUP_ACCOUNT_EMAIL = "admin@msr.local";
     public static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
     public static final String ROLE_ADMIN = "ADMIN";
     public static final String ROLE_USER = "USER";
@@ -20,15 +21,28 @@ public final class AccessControl {
     }
 
     public static boolean canManageUsers() {
+        return Session.isSetupMode() || Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
+    }
+
+    public static boolean canViewAuditLogs() {
         return Session.hasRole(ROLE_SUPER_ADMIN, ROLE_ADMIN);
     }
 
     public static boolean canAssignRole(String role) {
-        if (Session.hasRole(ROLE_SUPER_ADMIN)) {
+        if (Session.isSetupMode()) {
             return ROLE_ADMIN.equalsIgnoreCase(role)
                     || ROLE_USER.equalsIgnoreCase(role);
         }
+        if (Session.hasRole(ROLE_SUPER_ADMIN)) {
+            return ROLE_SUPER_ADMIN.equalsIgnoreCase(role)
+                    || ROLE_ADMIN.equalsIgnoreCase(role)
+                    || ROLE_USER.equalsIgnoreCase(role);
+        }
         if (Session.hasRole(ROLE_ADMIN)) {
+            return ROLE_ADMIN.equalsIgnoreCase(role)
+                    || ROLE_USER.equalsIgnoreCase(role);
+        }
+        if (Session.hasRole(ROLE_USER)) {
             return ROLE_USER.equalsIgnoreCase(role);
         }
         return false;
@@ -41,7 +55,10 @@ public final class AccessControl {
         if (Session.hasRole(ROLE_SUPER_ADMIN)) {
             return true;
         }
-        return Session.hasRole(ROLE_ADMIN) && !ROLE_SUPER_ADMIN.equalsIgnoreCase(target.getRole());
+        if (Session.hasRole(ROLE_ADMIN)) {
+            return !ROLE_SUPER_ADMIN.equalsIgnoreCase(target.getRole());
+        }
+        return Session.hasRole(ROLE_USER) && ROLE_USER.equalsIgnoreCase(target.getRole());
     }
 
     public static boolean isProtectedSuperAdmin(User user) {
@@ -50,6 +67,10 @@ public final class AccessControl {
 
     public static boolean isPrimarySuperAdminEmail(String email) {
         return email != null && PRIMARY_SUPER_ADMIN_EMAIL.equalsIgnoreCase(email.trim());
+    }
+
+    public static boolean isTemporarySetupAccountEmail(String email) {
+        return email != null && TEMPORARY_SETUP_ACCOUNT_EMAIL.equalsIgnoreCase(email.trim());
     }
 
     public static boolean isPrimarySuperAdmin(User user) {

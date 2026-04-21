@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -21,20 +22,29 @@ import javafx.scene.Parent;
 import javafx.scene.chart.PieChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 
 public class DashboardsController implements Initializable {
 
     @FXML private StackPane contentArea;
 
-    @FXML private Label lblAssetsEntered;
+    @FXML private Label lblTotalAssets;
     @FXML private Label lblAvailableAssets;
-    @FXML private Label lblIssuedAssets;
-    @FXML private Label lblWaitingReturn;
+    @FXML private Label lblBorrowedThisMonth;
+    @FXML private Label lblBorrowedBreakdown;
+    @FXML private Label lblReturnedAssets;
+    @FXML private Label lblUtilizationRate;
+    @FXML private Label lblAvailabilityRate;
+    @FXML private Button btnBackupSync;
+    @FXML private Button btnAuditLogs;
     @FXML private Button btnUsers;
-    @FXML private PieChart equipmentPieChart;
-    @FXML private PieChart borrowedPieChart;
+    @FXML private PieChart assetStatusPieChart;
+    @FXML private ProgressBar progressUtilization;
+    @FXML private ProgressBar progressAvailability;
+    @FXML private VBox alertsContainer;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -42,7 +52,16 @@ public class DashboardsController implements Initializable {
             btnUsers.setManaged(AccessControl.canManageUsers());
             btnUsers.setVisible(AccessControl.canManageUsers());
         }
-        if (lblAssetsEntered != null) {
+        if (btnBackupSync != null) {
+            boolean allowed = Session.hasRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            btnBackupSync.setManaged(allowed);
+            btnBackupSync.setVisible(allowed);
+        }
+        if (btnAuditLogs != null) {
+            btnAuditLogs.setManaged(AccessControl.canViewAuditLogs());
+            btnAuditLogs.setVisible(AccessControl.canViewAuditLogs());
+        }
+        if (lblTotalAssets != null) {
             refreshDashboard();
         }
     }
@@ -85,12 +104,32 @@ public class DashboardsController implements Initializable {
     }
 
     public void refreshDashboard() {
-        lblAssetsEntered.setText(String.valueOf(getTotalAssets()));
-        lblAvailableAssets.setText(String.valueOf(getAvailableAssets()));
-        lblIssuedAssets.setText(String.valueOf(getIssuedAssets()));
-        lblWaitingReturn.setText(String.valueOf(getWaitingReturn()));
-        loadAvailablePieChart();
-        loadBorrowedPieChart();
+        int totalAssets = getTotalAssets();
+        int availableAssets = getAvailableAssets();
+        int borrowedThisMonth = getBorrowedThisMonth();
+        int stillInUseFromBorrowedThisMonth = getStillInUseFromBorrowedThisMonth();
+        int returnedThisMonth = getReturnedThisMonth();
+
+        lblTotalAssets.setText(String.valueOf(totalAssets));
+        lblAvailableAssets.setText(String.valueOf(availableAssets));
+        lblBorrowedThisMonth.setText(String.valueOf(borrowedThisMonth));
+        if (lblBorrowedBreakdown != null) {
+            lblBorrowedBreakdown.setText(
+                    "Returned: " + returnedThisMonth + "  |  Still In Use: " + stillInUseFromBorrowedThisMonth
+            );
+        }
+        lblReturnedAssets.setText(String.valueOf(returnedThisMonth));
+
+        double utilizationRate = totalAssets == 0 ? 0 : (double) getAssetsInUse() / totalAssets;
+        double availabilityRate = totalAssets == 0 ? 0 : (double) availableAssets / totalAssets;
+
+        lblUtilizationRate.setText(String.format("%.0f%%", utilizationRate * 100));
+        lblAvailabilityRate.setText(String.format("%.0f%%", availabilityRate * 100));
+        progressUtilization.setProgress(utilizationRate);
+        progressAvailability.setProgress(availabilityRate);
+
+        loadAssetStatusChart(availableAssets, borrowedThisMonth, returnedThisMonth);
+        loadAlerts(borrowedThisMonth, returnedThisMonth);
     }
 
     private int getTotalAssets() {
@@ -102,11 +141,14 @@ public class DashboardsController implements Initializable {
                 "SELECT COUNT(*) FROM equipment " +
                         "WHERE asset_code NOT IN (" +
                         "SELECT asset_code FROM distribution WHERE returned = 0" +
+                        ") " +
+                        "AND asset_code NOT IN (" +
+                        "SELECT asset_code FROM returns" +
                         ")"
         );
     }
 
-    private int getIssuedAssets() {
+    private int getAssetsInUse() {
         return executeCountQuery(
                 "SELECT COUNT(DISTINCT e.asset_code) " +
                         "FROM equipment e " +
@@ -116,12 +158,54 @@ public class DashboardsController implements Initializable {
         );
     }
 
-    private int getWaitingReturn() {
-        return executeCountQuery(
-                "SELECT COUNT(DISTINCT d.asset_code) " +
-                        "FROM distribution d " +
-                        "WHERE d.returned = 0"
-        );
+    private int getBorrowedThisMonth() {
+        LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
+        String sql = "SELECT COUNT(*) FROM distribution WHERE DATE(date) >= ? AND DATE(date) <= DATE('now')";
+
+        try (Connection conn = DatabaseHandler.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, monthStart.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    private int getReturnedThisMonth() {
+        LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
+        String sql = "SELECT COUNT(*) FROM returns WHERE DATE(return_date) >= ? AND DATE(return_date) <= DATE('now')";
+
+        try (Connection conn = DatabaseHandler.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, monthStart.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    private int getStillInUseFromBorrowedThisMonth() {
+        LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
+        String sql =
+                "SELECT COUNT(*) FROM distribution " +
+                        "WHERE DATE(date) >= ? AND DATE(date) <= DATE('now') AND returned = 0";
+
+        try (Connection conn = DatabaseHandler.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, monthStart.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     private int executeCountQuery(String sql) {
@@ -139,86 +223,94 @@ public class DashboardsController implements Initializable {
         return 0;
     }
 
-    private void loadAvailablePieChart() {
-        String sql =
-                "SELECT " +
-                        "CASE " +
-                        "WHEN TRIM(COALESCE(e.category, '')) = '' THEN 'Other' " +
-                        "WHEN LOWER(TRIM(e.category)) IN ('other', 'others') THEN 'Other' " +
-                        "ELSE TRIM(e.category) " +
-                        "END AS category, " +
-                        "COUNT(*) AS total " +
-                        "FROM equipment e " +
-                        "WHERE e.asset_code NOT IN (" +
-                        "SELECT asset_code FROM distribution WHERE returned = 0" +
-                        ") " +
-                        "GROUP BY " +
-                        "CASE " +
-                        "WHEN TRIM(COALESCE(e.category, '')) = '' THEN 'Other' " +
-                        "WHEN LOWER(TRIM(e.category)) IN ('other', 'others') THEN 'Other' " +
-                        "ELSE TRIM(e.category) " +
-                        "END " +
-                        "ORDER BY total DESC, category ASC";
-        loadPieChartFromDatabase(equipmentPieChart, sql);
-    }
-
-    private void loadBorrowedPieChart() {
-        String sql =
-                "SELECT " +
-                        "CASE " +
-                        "WHEN TRIM(COALESCE(e.category, '')) = '' THEN 'Other' " +
-                        "WHEN LOWER(TRIM(e.category)) IN ('other', 'others') THEN 'Other' " +
-                        "ELSE TRIM(e.category) " +
-                        "END AS category, " +
-                        "COUNT(*) AS total " +
-                        "FROM distribution d " +
-                        "JOIN equipment e ON e.asset_code = d.asset_code " +
-                        "WHERE d.returned = 0 " +
-                        "GROUP BY " +
-                        "CASE " +
-                        "WHEN TRIM(COALESCE(e.category, '')) = '' THEN 'Other' " +
-                        "WHEN LOWER(TRIM(e.category)) IN ('other', 'others') THEN 'Other' " +
-                        "ELSE TRIM(e.category) " +
-                        "END " +
-                        "ORDER BY total DESC, category ASC";
-        loadPieChartFromDatabase(borrowedPieChart, sql);
-    }
-
-    private void loadPieChartFromDatabase(PieChart chart, String sql) {
-        if (chart == null) {
+    private void loadAssetStatusChart(int availableAssets, int borrowedThisMonth, int returnedThisMonth) {
+        if (assetStatusPieChart == null) {
             return;
         }
 
         ObservableList<PieChart.Data> data = FXCollections.observableArrayList();
-        Map<String, Integer> dbData = new java.util.LinkedHashMap<>();
-
-        try (Connection conn = DatabaseHandler.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                dbData.put(rs.getString("category"), rs.getInt("total"));
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (availableAssets > 0) {
+            data.add(new PieChart.Data("Available", availableAssets));
+        }
+        if (borrowedThisMonth > 0) {
+            data.add(new PieChart.Data("Borrowed This Month", borrowedThisMonth));
+        }
+        if (returnedThisMonth > 0) {
+            data.add(new PieChart.Data("Returned This Month", returnedThisMonth));
+        }
+        if (data.isEmpty()) {
+            data.add(new PieChart.Data("No Data", 1));
         }
 
-        List<String> categories = new ArrayList<>(dbData.keySet());
-        categories.sort(Comparator.naturalOrder());
+        assetStatusPieChart.setLabelsVisible(true);
+        assetStatusPieChart.setData(data);
+    }
 
-        if (categories.isEmpty()) {
-            chart.setData(FXCollections.observableArrayList());
+    private void loadAlerts(int borrowedThisMonth, int returnedThisMonth) {
+        if (alertsContainer == null) {
             return;
         }
 
-        for (String category : categories) {
-            int count = dbData.getOrDefault(category, 0);
-            data.add(new PieChart.Data(category, count));
+        alertsContainer.getChildren().clear();
+
+        addAlertItem("Monthly borrowing", borrowedThisMonth + " asset(s) were borrowed this month.");
+
+        int outstandingWithRemarks = executeCountQuery(
+                "SELECT COUNT(*) FROM distribution " +
+                        "WHERE returned = 0 AND outstanding_remarks IS NOT NULL AND TRIM(outstanding_remarks) <> ''"
+        );
+        if (outstandingWithRemarks > 0) {
+            addAlertItem(
+                    "Outstanding return reasons captured",
+                    outstandingWithRemarks + " outstanding asset(s) already have return remarks recorded."
+            );
         }
 
-        chart.setLabelsVisible(true);
-        chart.setData(data);
+        if (returnedThisMonth == 0) {
+            addAlertItem("Monthly returns", "No returns have been recorded yet this month.");
+        }
+
+        if (alertsContainer.getChildren().isEmpty()) {
+            alertsContainer.getChildren().add(createEmptyState("No alerts right now."));
+        }
+    }
+
+    private LocalDate parseDate(String value) {
+        try {
+            return value == null || value.isBlank() ? LocalDate.now() : LocalDate.parse(value);
+        } catch (Exception e) {
+            return LocalDate.now();
+        }
+    }
+
+    private VBox createEmptyState(String text) {
+        VBox item = new VBox();
+        item.getStyleClass().add("dashboard-feed-item");
+        Label label = new Label(text);
+        label.getStyleClass().add("dashboard-feed-copy");
+        label.setWrapText(true);
+        item.getChildren().add(label);
+        return item;
+    }
+
+    private void addAlertItem(String titleText, String bodyText) {
+        VBox item = new VBox(4);
+        item.getStyleClass().addAll("dashboard-feed-item", "dashboard-alert-item");
+
+        Label title = new Label(titleText);
+        title.getStyleClass().add("dashboard-feed-title");
+
+        Label body = new Label(bodyText);
+        body.getStyleClass().add("dashboard-feed-copy");
+        body.setWrapText(true);
+
+        item.getChildren().addAll(title, body);
+        alertsContainer.getChildren().add(item);
+    }
+
+    @FXML
+    private void handleRefreshDashboard(ActionEvent event) {
+        refreshDashboard();
     }
 
     @FXML private void openAddEquipment() { loadPage("AddEquipment.fxml"); }
@@ -234,6 +326,22 @@ public class DashboardsController implements Initializable {
     @FXML private void openReturnEquipmentList() { loadPage("ReturnEquipmentList.fxml"); }
     @FXML private void openReturnReport() { loadPage("ReturnReport.fxml"); }
     @FXML private void openOutstandingReport() { loadPage("OutstandingReport.fxml"); }
+    @FXML private void openBackupSync() {
+        try {
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            loadPage("BackupSync.fxml");
+        } catch (SecurityException e) {
+            OperationFeedbackHelper.showError("Access Denied", e.getMessage());
+        }
+    }
+    @FXML private void openAuditLogs() {
+        try {
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+            loadPage("AuditLogs.fxml");
+        } catch (SecurityException e) {
+            OperationFeedbackHelper.showError("Access Denied", e.getMessage());
+        }
+    }
     @FXML private void openUsers() {
         try {
             AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);

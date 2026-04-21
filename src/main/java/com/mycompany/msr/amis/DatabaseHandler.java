@@ -17,8 +17,10 @@ public class DatabaseHandler {
     private static final String DATABASE_FILE_NAME = "msr_amis.db";
     private static final Path DATABASE_PATH = resolveDatabasePath();
     private static final String URL = "jdbc:sqlite:" + DATABASE_PATH;
+    private static final String DEFAULT_DEPARTMENT = "MSR";
     private static final DateTimeFormatter RESET_TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String DEFAULT_SETUP_ACCOUNT_EMAIL = AccessControl.TEMPORARY_SETUP_ACCOUNT_EMAIL;
 
     public static Connection getConnection() throws SQLException {
         Connection conn = DriverManager.getConnection(URL);
@@ -118,6 +120,7 @@ public class DatabaseHandler {
                             "assigned_to TEXT, " +
                             "phone TEXT, " +
                             "nid TEXT, " +
+                            "outstanding_remarks TEXT, " +
                             "date TEXT DEFAULT (DATE('now')), " +
                             "returned INTEGER DEFAULT 0 " +
                             "CHECK(returned IN (0,1))" +
@@ -149,7 +152,20 @@ public class DatabaseHandler {
                     ")"
             );
 
+            stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS audit_log (" +
+                            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                            "action TEXT NOT NULL, " +
+                            "entity TEXT, " +
+                            "entity_id TEXT, " +
+                            "performed_by TEXT, " +
+                            "details TEXT, " +
+                            "action_time TEXT DEFAULT CURRENT_TIMESTAMP" +
+                    ")"
+            );
+
             migrateDatabase(conn);
+            insertDepartmentIfMissing(conn, DEFAULT_DEPARTMENT);
             ensureSystemAccounts(conn);
 
         } catch (Exception e) {
@@ -169,7 +185,10 @@ public class DatabaseHandler {
         ensureColumn(conn, "distribution", "assigned_to", "TEXT");
         ensureColumn(conn, "distribution", "returned", "INTEGER DEFAULT 0 CHECK(returned IN (0,1))");
         ensureColumn(conn, "distribution", "date", "TEXT DEFAULT (DATE('now'))");
+        ensureColumn(conn, "distribution", "outstanding_remarks", "TEXT");
         ensureColumn(conn, "returns", "remarks", "TEXT");
+        ensureColumn(conn, "audit_log", "username", "TEXT");
+        ensureColumn(conn, "audit_log", "module_name", "TEXT");
 
         try (Statement stmt = conn.createStatement()) {
             if (hasColumn(conn, "distribution", "name")) {
@@ -193,6 +212,107 @@ public class DatabaseHandler {
                     "SELECT DISTINCT TRIM(department) FROM users " +
                     "WHERE department IS NOT NULL AND TRIM(department) <> ''"
             );
+            if (hasColumn(conn, "audit_log", "username")) {
+                stmt.executeUpdate(
+                        "UPDATE audit_log SET username = performed_by " +
+                        "WHERE (username IS NULL OR TRIM(username) = '') " +
+                        "AND performed_by IS NOT NULL AND TRIM(performed_by) <> ''"
+                );
+            }
+            if (hasColumn(conn, "audit_log", "module_name")) {
+                stmt.executeUpdate(
+                        "UPDATE audit_log SET module_name = entity " +
+                        "WHERE (module_name IS NULL OR TRIM(module_name) = '') " +
+                        "AND entity IS NOT NULL AND TRIM(entity) <> ''"
+                );
+            }
+        }
+
+        repairMisalignedReturnRows(conn);
+        removeDuplicateDistributionRows(conn);
+        removeSupersededReturnRows(conn);
+    }
+
+    private static void repairMisalignedReturnRows(Connection conn) throws SQLException {
+        String fixReturnsSql =
+                "UPDATE returns " +
+                "SET phone = (" +
+                "        SELECT d.phone FROM distribution d " +
+                "        WHERE LOWER(TRIM(d.asset_code)) = LOWER(TRIM(returns.asset_code)) " +
+                "        ORDER BY d.id DESC LIMIT 1" +
+                "    ), " +
+                "    nid = (" +
+                "        SELECT d.nid FROM distribution d " +
+                "        WHERE LOWER(TRIM(d.asset_code)) = LOWER(TRIM(returns.asset_code)) " +
+                "        ORDER BY d.id DESC LIMIT 1" +
+                "    ), " +
+                "    condition = CASE " +
+                "        WHEN condition IS NULL OR TRIM(condition) = '' THEN 'Returned' " +
+                "        ELSE 'Returned' " +
+                "    END " +
+                "WHERE EXISTS (" +
+                "    SELECT 1 FROM distribution d " +
+                "    WHERE LOWER(TRIM(d.asset_code)) = LOWER(TRIM(returns.asset_code)) " +
+                "      AND COALESCE(TRIM(returns.phone), '') = COALESCE(TRIM(d.assigned_to), '') " +
+                "      AND COALESCE(TRIM(returns.nid), '') = COALESCE(TRIM(d.phone), '') " +
+                "      AND COALESCE(TRIM(returns.condition), '') = COALESCE(TRIM(d.nid), '')" +
+                ")";
+
+        String fixEquipmentSql =
+                "UPDATE equipment " +
+                "SET condition = 'Returned' " +
+                "WHERE EXISTS (" +
+                "    SELECT 1 " +
+                "    FROM returns r " +
+                "    INNER JOIN distribution d ON LOWER(TRIM(d.asset_code)) = LOWER(TRIM(r.asset_code)) " +
+                "    WHERE LOWER(TRIM(r.asset_code)) = LOWER(TRIM(equipment.asset_code)) " +
+                "      AND COALESCE(TRIM(equipment.condition), '') = COALESCE(TRIM(d.nid), '')" +
+                ")";
+
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(fixReturnsSql);
+            stmt.executeUpdate(fixEquipmentSql);
+        }
+    }
+
+    private static void removeDuplicateDistributionRows(Connection conn) throws SQLException {
+        String sql =
+                "DELETE FROM distribution AS older " +
+                "WHERE EXISTS (" +
+                "    SELECT 1 FROM distribution AS newer " +
+                "    WHERE newer.id > older.id " +
+                "      AND COALESCE(TRIM(newer.asset_code), '') = COALESCE(TRIM(older.asset_code), '') " +
+                "      AND COALESCE(newer.assignment_id, 0) = COALESCE(older.assignment_id, 0) " +
+                "      AND COALESCE(TRIM(newer.assigned_to), '') = COALESCE(TRIM(older.assigned_to), '') " +
+                "      AND COALESCE(TRIM(newer.phone), '') = COALESCE(TRIM(older.phone), '') " +
+                "      AND COALESCE(TRIM(newer.nid), '') = COALESCE(TRIM(older.nid), '') " +
+                "      AND COALESCE(TRIM(newer.date), '') = COALESCE(TRIM(older.date), '') " +
+                "      AND COALESCE(newer.returned, 0) = COALESCE(older.returned, 0)" +
+                ")";
+
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
+        }
+    }
+
+    private static void removeSupersededReturnRows(Connection conn) throws SQLException {
+        String sql =
+                "DELETE FROM returns AS placeholder " +
+                "WHERE COALESCE(TRIM(placeholder.condition), '') = 'Returned' " +
+                "  AND COALESCE(TRIM(placeholder.remarks), '') = '' " +
+                "  AND EXISTS (" +
+                "    SELECT 1 FROM returns AS actual " +
+                "    WHERE actual.id > placeholder.id " +
+                "      AND COALESCE(TRIM(actual.asset_code), '') = COALESCE(TRIM(placeholder.asset_code), '') " +
+                "      AND COALESCE(TRIM(actual.returned_by), '') = COALESCE(TRIM(placeholder.returned_by), '') " +
+                "      AND COALESCE(TRIM(actual.phone), '') = COALESCE(TRIM(placeholder.phone), '') " +
+                "      AND COALESCE(TRIM(actual.nid), '') = COALESCE(TRIM(placeholder.nid), '') " +
+                "      AND COALESCE(TRIM(actual.return_date), '') = COALESCE(TRIM(placeholder.return_date), '') " +
+                "      AND (COALESCE(TRIM(actual.condition), '') <> 'Returned' OR COALESCE(TRIM(actual.remarks), '') <> '')" +
+                ")";
+
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
         }
     }
 
@@ -211,7 +331,7 @@ public class DatabaseHandler {
                 "UPDATE users SET full_name=?, username=?, role=?, status=?, department=?, email=? " +
                 "WHERE LOWER(email) = LOWER(?)";
 
-        insertDepartmentIfMissing(conn, "Administration");
+        insertDepartmentIfMissing(conn, DEFAULT_DEPARTMENT);
 
         try (PreparedStatement lookup = conn.prepareStatement(lookupSql)) {
             lookup.setString(1, AccessControl.PRIMARY_SUPER_ADMIN_EMAIL);
@@ -222,7 +342,7 @@ public class DatabaseHandler {
                         update.setString(2, AccessControl.PRIMARY_SUPER_ADMIN_EMAIL);
                         update.setString(3, AccessControl.ROLE_SUPER_ADMIN);
                         update.setString(4, AccessControl.STATUS_ACTIVE);
-                        update.setString(5, "Administration");
+                        update.setString(5, DEFAULT_DEPARTMENT);
                         update.setString(6, AccessControl.PRIMARY_SUPER_ADMIN_EMAIL);
                         update.setString(7, AccessControl.PRIMARY_SUPER_ADMIN_EMAIL);
                         update.executeUpdate();
@@ -237,7 +357,7 @@ public class DatabaseHandler {
             insert.setString(2, AccessControl.PRIMARY_SUPER_ADMIN_EMAIL);
             insert.setString(3, PasswordUtils.hash("admin123"));
             insert.setString(4, AccessControl.ROLE_SUPER_ADMIN);
-            insert.setString(5, "Administration");
+            insert.setString(5, DEFAULT_DEPARTMENT);
             insert.setString(6, null);
             insert.setString(7, AccessControl.PRIMARY_SUPER_ADMIN_EMAIL);
             insert.executeUpdate();
@@ -249,13 +369,27 @@ public class DatabaseHandler {
         String insertSql =
                 "INSERT INTO users (full_name, username, password, role, department, phone, email) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String updateSql =
+                "UPDATE users SET full_name=?, username=?, role=?, status=?, department=?, email=? " +
+                "WHERE LOWER(email) = LOWER(?)";
 
-        String email = "admin@msr.local";
+        String email = DEFAULT_SETUP_ACCOUNT_EMAIL;
 
         try (PreparedStatement lookup = conn.prepareStatement(lookupSql)) {
             lookup.setString(1, email);
             try (ResultSet rs = lookup.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0) {
+                    try (PreparedStatement update = conn.prepareStatement(updateSql)) {
+                        String currentStatus = getUserStatusByEmail(conn, email);
+                        update.setString(1, "System Setup Administrator");
+                        update.setString(2, email);
+                        update.setString(3, AccessControl.ROLE_ADMIN);
+                        update.setString(4, currentStatus.isBlank() ? AccessControl.STATUS_ACTIVE : currentStatus);
+                        update.setString(5, DEFAULT_DEPARTMENT);
+                        update.setString(6, email);
+                        update.setString(7, email);
+                        update.executeUpdate();
+                    }
                     return;
                 }
             }
@@ -264,12 +398,12 @@ public class DatabaseHandler {
         String password = PasswordUtils.hash("admin123");
 
         try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
-            insertDepartmentIfMissing(conn, "Administration");
-            ps.setString(1, "System Administrator");
+            insertDepartmentIfMissing(conn, DEFAULT_DEPARTMENT);
+            ps.setString(1, "System Setup Administrator");
             ps.setString(2, email);
             ps.setString(3, password);
             ps.setString(4, AccessControl.ROLE_ADMIN);
-            ps.setString(5, "Administration");
+            ps.setString(5, DEFAULT_DEPARTMENT);
             ps.setString(6, null);
             ps.setString(7, email);
             ps.executeUpdate();
@@ -279,12 +413,29 @@ public class DatabaseHandler {
     private static void demoteOtherSuperAdmins(Connection conn) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "UPDATE users SET role = ? " +
-                "WHERE UPPER(role) = 'SUPER_ADMIN' AND LOWER(email) <> LOWER(?)"
+                "WHERE UPPER(role) = 'SUPER_ADMIN' " +
+                "AND LOWER(email) <> LOWER(?) " +
+                "AND LOWER(email) <> LOWER(?)"
         )) {
             ps.setString(1, AccessControl.ROLE_ADMIN);
             ps.setString(2, AccessControl.PRIMARY_SUPER_ADMIN_EMAIL);
+            ps.setString(3, DEFAULT_SETUP_ACCOUNT_EMAIL);
             ps.executeUpdate();
         }
+    }
+
+    private static String getUserStatusByEmail(Connection conn, String email) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT COALESCE(status, '') FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1"
+        )) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return normalizedOptional(rs.getString(1));
+                }
+            }
+        }
+        return "";
     }
 
     private static void ensureColumn(Connection conn, String tableName, String columnName, String definition)
@@ -576,15 +727,10 @@ public class DatabaseHandler {
         ObservableList<User> list = FXCollections.observableArrayList();
 
         String sql = "SELECT * FROM users";
-        boolean excludePrimarySuperAdmin = true;
-        boolean filterOtherSuperAdmins = Session.hasRole(AccessControl.ROLE_ADMIN)
-                && !Session.hasRole(AccessControl.ROLE_SUPER_ADMIN);
-        if (excludePrimarySuperAdmin && filterOtherSuperAdmins) {
-            sql += " WHERE LOWER(email) <> LOWER('" + AccessControl.PRIMARY_SUPER_ADMIN_EMAIL + "') AND UPPER(role) <> 'SUPER_ADMIN'";
-        } else if (excludePrimarySuperAdmin) {
-            sql += " WHERE LOWER(email) <> LOWER('" + AccessControl.PRIMARY_SUPER_ADMIN_EMAIL + "')";
-        } else if (filterOtherSuperAdmins) {
-            sql += " WHERE UPPER(role) <> 'SUPER_ADMIN'";
+        if (Session.hasRole(AccessControl.ROLE_ADMIN) && !Session.hasRole(AccessControl.ROLE_SUPER_ADMIN)) {
+            sql += " WHERE UPPER(role) IN ('ADMIN', 'USER')";
+        } else if (Session.hasRole(AccessControl.ROLE_USER)) {
+            sql += " WHERE UPPER(role) = 'USER'";
         }
         sql += " ORDER BY full_name";
 
@@ -707,6 +853,10 @@ public class DatabaseHandler {
         }
     }
 
+    public static boolean isTemporarySetupAccount(User user) {
+        return user != null && AccessControl.isTemporarySetupAccountEmail(user.getEmail());
+    }
+
     public static void resetPasswordWithCode(String identifier, String resetCode, String hashedPassword) throws Exception {
         String normalizedIdentifier = normalizedRequired(identifier, "Email or username is required.");
         String normalizedCode = normalizedRequired(resetCode, "Reset code is required.");
@@ -790,9 +940,14 @@ public class DatabaseHandler {
 
     public static void insertUser(String name, String password,
                                   String role, String department, String email) throws Exception {
-        AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        if (!Session.isSetupMode()) {
+            AccessControl.requireRole(AccessControl.ROLE_SUPER_ADMIN, AccessControl.ROLE_ADMIN);
+        }
         if (AccessControl.isPrimarySuperAdminEmail(email)) {
-            throw new SecurityException("This email is reserved for the built-in hidden Super Admin.");
+            throw new SecurityException("This email is reserved for the primary Super Admin account.");
+        }
+        if (AccessControl.isTemporarySetupAccountEmail(email)) {
+            throw new SecurityException("This email is reserved for the temporary setup account.");
         }
         if (!AccessControl.canAssignRole(role)) {
             throw new SecurityException("You are not allowed to assign the " + role + " role.");
@@ -911,6 +1066,29 @@ public class DatabaseHandler {
         }
     }
 
+    public static void completeTemporarySetup(String replacementEmail) throws Exception {
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE users SET status=? WHERE LOWER(email)=LOWER(?)"
+            )) {
+                ps.setString(1, AccessControl.STATUS_FROZEN);
+                ps.setString(2, DEFAULT_SETUP_ACCOUNT_EMAIL);
+                ps.executeUpdate();
+                AuditService.log(
+                        DEFAULT_SETUP_ACCOUNT_EMAIL,
+                        "TEMPORARY_SETUP_COMPLETED",
+                        "USERS",
+                        "Temporary setup account frozen after creating " + normalizedOptional(replacementEmail)
+                );
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            }
+        }
+    }
+
     private static void logPasswordResetEvent(Connection conn, Integer userId, String identifier,
                                               String eventType, String status, String details) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
@@ -947,11 +1125,10 @@ public class DatabaseHandler {
         if (!AccessControl.canManageTarget(target)) {
             throw new SecurityException("You are not allowed to delete this user.");
         }
-        if (AccessControl.isPrimarySuperAdmin(target)) {
-            throw new SecurityException("The hidden Super Admin account cannot be modified from the normal UI.");
-        }
-        if (AccessControl.isProtectedSuperAdmin(target)) {
-            throw new SecurityException("Super Admin accounts cannot be deleted from the normal UI.");
+        if (target != null
+                && AccessControl.ROLE_SUPER_ADMIN.equalsIgnoreCase(target.getRole())
+                && getRoleCount(AccessControl.ROLE_SUPER_ADMIN) <= 1) {
+            throw new SecurityException("The last Super Admin account cannot be deleted.");
         }
         if (target != null
                 && AccessControl.ROLE_ADMIN.equalsIgnoreCase(target.getRole())
@@ -972,9 +1149,6 @@ public class DatabaseHandler {
         User target = getUserById(id);
         if (!AccessControl.canManageTarget(target)) {
             throw new SecurityException("You are not allowed to edit this user.");
-        }
-        if (AccessControl.isPrimarySuperAdmin(target) || AccessControl.isPrimarySuperAdminEmail(email)) {
-            throw new SecurityException("The hidden Super Admin account cannot be modified from the normal UI.");
         }
         if (!AccessControl.canAssignRole(role)) {
             throw new SecurityException("You are not allowed to assign the " + role + " role.");
@@ -1033,11 +1207,11 @@ public class DatabaseHandler {
         if (!AccessControl.canManageTarget(target)) {
             throw new SecurityException("You are not allowed to change this user's status.");
         }
-        if (AccessControl.isPrimarySuperAdmin(target)) {
-            throw new SecurityException("The hidden Super Admin account cannot be modified from the normal UI.");
-        }
-        if (AccessControl.isProtectedSuperAdmin(target) && AccessControl.STATUS_FROZEN.equalsIgnoreCase(status)) {
-            throw new SecurityException("Super Admin accounts cannot be frozen from the normal UI.");
+        if (target != null
+                && AccessControl.ROLE_SUPER_ADMIN.equalsIgnoreCase(target.getRole())
+                && AccessControl.STATUS_FROZEN.equalsIgnoreCase(status)
+                && getRoleCount(AccessControl.ROLE_SUPER_ADMIN) <= 1) {
+            throw new SecurityException("The last Super Admin account cannot be frozen.");
         }
 
         try (Connection conn = getConnection();
@@ -1085,6 +1259,21 @@ public class DatabaseHandler {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public static void logAudit(String action, String entity, String entityId, String details) {
+        User currentUser = Session.getCurrentUser();
+        String performedBy = currentUser == null
+                ? "SYSTEM"
+                : (currentUser.getEmail() == null || currentUser.getEmail().isBlank()
+                ? currentUser.getUsername()
+                : currentUser.getEmail());
+        String extra = normalizedOptional(entityId);
+        String message = normalizedOptional(details);
+        if (!extra.isBlank()) {
+            message = message.isBlank() ? extra : message + " [" + extra + "]";
+        }
+        AuditService.log(performedBy, action, entity, message);
     }
 
     public static List<String> getDepartments() {
@@ -1519,7 +1708,7 @@ public class DatabaseHandler {
                                        String condition, String remarks) throws Exception {
 
         String updateSql = "UPDATE distribution SET returned = 1 WHERE asset_code = ? AND returned = 0";
-        String statusSql = "UPDATE equipment SET status = 'AVAILABLE' WHERE asset_code = ?";
+        String statusSql = "UPDATE equipment SET status = 'AVAILABLE', condition = ? WHERE asset_code = ?";
         String insertSql = "INSERT INTO returns (asset_code, returned_by, phone, nid, condition, remarks, return_date) " +
                            "VALUES (?, ?, ?, ?, ?, ?, DATE('now'))";
 
@@ -1545,7 +1734,8 @@ public class DatabaseHandler {
                 }
 
                 try (PreparedStatement ps3 = conn.prepareStatement(statusSql)) {
-                    ps3.setString(1, assetCode);
+                    ps3.setString(1, normalizedOptional(condition));
+                    ps3.setString(2, assetCode);
                     ps3.executeUpdate();
                 }
 
@@ -1602,6 +1792,24 @@ public class DatabaseHandler {
             ps.setString(1, normalizedOptional(type));
             ResultSet rs = ps.executeQuery();
             return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    public static void updateOutstandingReturnRemarks(List<String> assetCodes, String remarks) throws Exception {
+        if (assetCodes == null || assetCodes.isEmpty()) {
+            return;
+        }
+
+        String sql = "UPDATE distribution SET outstanding_remarks = ? WHERE asset_code = ? AND returned = 0";
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (String assetCode : assetCodes) {
+                ps.setString(1, normalizedOptional(remarks));
+                ps.setString(2, normalizedOptional(assetCode));
+                ps.addBatch();
+            }
+            ps.executeBatch();
         }
     }
 

@@ -15,6 +15,7 @@ public class Distribution {
     private final StringProperty phone;
     private final StringProperty nid;
     private final ObjectProperty<LocalDate> distributionDate;
+    private final StringProperty outstandingRemarks;
 
     // ✅ FIXED: changed from StringProperty → IntegerProperty
     private final IntegerProperty assignmentId;
@@ -50,6 +51,7 @@ public class Distribution {
         this.distributionDate = new SimpleObjectProperty<>(
                 distributionDate != null ? distributionDate : LocalDate.now()
         );
+        this.outstandingRemarks = new SimpleStringProperty("");
 
         // ✅ FIXED: correct type initialization
         this.assignmentId = new SimpleIntegerProperty(0);
@@ -93,6 +95,7 @@ public class Distribution {
     public int getAssignmentId() { return assignmentId.get(); }
 
     public String getStatus() { return status.get(); }
+    public String getOutstandingRemarks() { return outstandingRemarks.get(); }
 
     // controller expects this name
     public String getDate() { return getFormattedDate(); }
@@ -125,6 +128,7 @@ public class Distribution {
     public void setAssignmentId(int value) { assignmentId.set(value); }
 
     public void setStatus(String value) { status.set(safe(value)); }
+    public void setOutstandingRemarks(String value) { outstandingRemarks.set(safe(value)); }
 
     // ================= PROPERTIES =================
     public IntegerProperty idProperty() { return id; }
@@ -147,6 +151,7 @@ public class Distribution {
     public IntegerProperty assignmentIdProperty() { return assignmentId; }
 
     public StringProperty statusProperty() { return status; }
+    public StringProperty outstandingRemarksProperty() { return outstandingRemarks; }
 
     // ================= DEBUG =================
     @Override
@@ -161,6 +166,7 @@ public class Distribution {
                 ", nid='" + getNid() + '\'' +
                 ", assignmentId=" + getAssignmentId() +
                 ", status='" + getStatus() + '\'' +
+                ", outstandingRemarks='" + getOutstandingRemarks() + '\'' +
                 ", date=" + getFormattedDate() +
                 '}';
     }

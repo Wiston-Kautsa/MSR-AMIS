@@ -69,27 +69,31 @@
                                 </columnConstraints>
 
                                 <!-- EQUIPMENT (FIXED ROOT ISSUE) -->
-                                <Label text="Select Equipment:" GridPane.rowIndex="0"/>
+                                <Label text="Asset Code:" GridPane.rowIndex="0"/>
                                 <ComboBox fx:id="equipmentCombo"
+                                          promptText="Select asset code"
                                           prefWidth="300"
                                           GridPane.rowIndex="0"
                                           GridPane.columnIndex="1"/>
 
                                 <!-- NAME -->
-                                <Label text="Name:" GridPane.rowIndex="1"/>
+                                <Label text="Assigned To:" GridPane.rowIndex="1"/>
                                 <TextField fx:id="txtName"
+                                           promptText="Enter assigned person"
                                            GridPane.rowIndex="1"
                                            GridPane.columnIndex="1"/>
 
                                 <!-- PHONE -->
                                 <Label text="Phone:" GridPane.rowIndex="2"/>
                                 <TextField fx:id="txtPhone"
+                                           promptText="Enter phone number"
                                            GridPane.rowIndex="2"
                                            GridPane.columnIndex="1"/>
 
                                 <!-- NID -->
                                 <Label text="NID:" GridPane.rowIndex="3"/>
                                 <TextField fx:id="txtNid"
+                                           promptText="Enter national ID"
                                            GridPane.rowIndex="3"
                                            GridPane.columnIndex="1"/>
 
@@ -133,6 +137,9 @@
                                 <padding>
                                     <Insets top="10" left="10" right="10" bottom="10"/>
                                 </padding>
+
+                                <Label text="Required columns: asset_code, assigned_to, phone, nid"
+                                       style="-fx-text-fill: #4b5563;"/>
 
                                 <Label fx:id="lblSelectedFile"
                                        text="No file selected"

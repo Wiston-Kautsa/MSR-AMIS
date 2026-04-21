@@ -44,7 +44,7 @@ public class ReturnEquipmentListController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        cmbCondition.getItems().addAll("Good", "Fair", "Damaged", "Faulty", "Lost");
+        cmbCondition.getItems().addAll("Returned", "Good", "Fair", "Damaged", "Faulty", "Lost");
 
         colAssetCode.setCellValueFactory(new PropertyValueFactory<>("assetCode"));
         colResponsibleOfficer.setCellValueFactory(new PropertyValueFactory<>("responsibleOfficer"));

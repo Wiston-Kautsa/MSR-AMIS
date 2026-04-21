@@ -14,6 +14,8 @@ public class App extends Application {
     private static final double LOGIN_HEIGHT = 500;
     private static final double DASHBOARD_WIDTH = 1100;
     private static final double DASHBOARD_HEIGHT = 700;
+    private static final double SETUP_WIDTH = 980;
+    private static final double SETUP_HEIGHT = 700;
 
     private static Scene scene;
     private static Stage primaryStage;
@@ -48,6 +50,13 @@ public class App extends Application {
         scene.setRoot(loadFXML("Dashboards"));
         primaryStage.setWidth(DASHBOARD_WIDTH);
         primaryStage.setHeight(DASHBOARD_HEIGHT);
+        primaryStage.centerOnScreen();
+    }
+
+    static void showSetupUsersPage() throws IOException {
+        scene.setRoot(loadFXML("Users"));
+        primaryStage.setWidth(SETUP_WIDTH);
+        primaryStage.setHeight(SETUP_HEIGHT);
         primaryStage.centerOnScreen();
     }
 

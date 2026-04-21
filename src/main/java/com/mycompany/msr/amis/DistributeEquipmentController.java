@@ -23,6 +23,7 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.File;
@@ -39,6 +40,13 @@ import java.util.Set;
 import java.util.HashSet;
 
 public class DistributeEquipmentController implements Initializable {
+    private static final int BULK_HEADER_ROW_INDEX = 0;
+    private static final int BULK_DATA_START_ROW_INDEX = BULK_HEADER_ROW_INDEX + 1;
+    private static final String[] BULK_TEMPLATE_HEADERS = {"asset_code", "assigned_to", "phone", "nid"};
+    private static final String SAMPLE_ASSET_CODE = "MSR-LTP-001";
+    private static final String SAMPLE_PHONE = "0991234567";
+    private static final String SAMPLE_NID = "MW123456";
+
 
     @FXML private ComboBox<String> cmbAssignments;
     @FXML private ComboBox<String> equipmentCombo;
@@ -72,6 +80,7 @@ public class DistributeEquipmentController implements Initializable {
 
     private File selectedFile;
     private int requiredQty = 0;
+    private int existingDistributedQty = 0;
     private Assignment selectedAssignment;
 
     @Override
@@ -113,7 +122,7 @@ public class DistributeEquipmentController implements Initializable {
                 continue;
             }
 
-            String label = assignment.getPerson() + " (" + assignment.getEquipmentType() + ")";
+            String label = buildAssignmentLabel(assignment, distributed);
             cmbAssignments.getItems().add(label);
             assignmentMap.put(label, assignment);
         }
@@ -151,6 +160,7 @@ public class DistributeEquipmentController implements Initializable {
         selectedAssignment = assignmentMap.get(cmbAssignments.getValue());
         if (selectedAssignment == null) {
             requiredQty = 0;
+            existingDistributedQty = 0;
             selectedFile = null;
             stagedData.clear();
             usedAssets.clear();
@@ -164,13 +174,15 @@ public class DistributeEquipmentController implements Initializable {
         }
 
         requiredQty = selectedAssignment.getQuantity();
+        existingDistributedQty = DatabaseHandler.getDistributedCountForAssignment(selectedAssignment.getId());
         selectedFile = null;
         stagedData.clear();
         usedAssets.clear();
         clearFields();
 
         lblSelectedAssignment.setText(
-                selectedAssignment.getPerson() + " - " + selectedAssignment.getEquipmentType()
+                selectedAssignment.getPerson() + " - " + selectedAssignment.getEquipmentType() +
+                        " (" + getAssignmentStatus(existingDistributedQty, requiredQty) + ")"
         );
         lblSelectedFile.setText("No file selected");
         txtName.setText(selectedAssignment.getPerson());
@@ -186,7 +198,7 @@ public class DistributeEquipmentController implements Initializable {
             return;
         }
 
-        if (stagedData.size() >= requiredQty) {
+        if (existingDistributedQty + stagedData.size() >= requiredQty) {
             showWarning("Limit reached");
             return;
         }
@@ -237,7 +249,7 @@ public class DistributeEquipmentController implements Initializable {
             return;
         }
 
-        if (stagedData.size() != requiredQty) {
+        if (existingDistributedQty + stagedData.size() != requiredQty) {
             showError("Incomplete entries");
             return;
         }
@@ -259,18 +271,20 @@ public class DistributeEquipmentController implements Initializable {
     }
 
     private void updateProgress() {
-        int entered = stagedData.size();
-        int remaining = requiredQty - entered;
+        int staged = stagedData.size();
+        int entered = existingDistributedQty + staged;
+        int remaining = Math.max(0, requiredQty - entered);
 
-        lblProgress.setText("Assigned: " + entered + " / " + requiredQty);
+        lblProgress.setText("Enrolled: " + entered + " / " + requiredQty);
         lblAssignmentStats.setText(
                 "Required: " + requiredQty +
-                " | Entered: " + entered +
+                " | Already Enrolled: " + existingDistributedQty +
+                " | This Session: " + staged +
                 " | Remaining: " + remaining
         );
 
         btnAdd.setDisable(requiredQty == 0 || entered >= requiredQty);
-        btnSave.setDisable(requiredQty == 0 || entered != requiredQty);
+        btnSave.setDisable(requiredQty == 0 || staged == 0 || entered != requiredQty);
         btnClear.setDisable(requiredQty == 0);
     }
 
@@ -362,23 +376,17 @@ public class DistributeEquipmentController implements Initializable {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Distribution Template");
 
-            String[] headers = {"asset_code", "assigned_to", "phone", "nid"};
-            String[] sample = {"MSR-LTP-001", "Jane Doe", "0991234567", "MW123456"};
-
-            Row headerRow = sheet.createRow(0);
-            Row sampleRow = sheet.createRow(1);
+            Row headerRow = sheet.createRow(BULK_HEADER_ROW_INDEX);
 
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
 
-            for (int i = 0; i < headers.length; i++) {
+            for (int i = 0; i < BULK_TEMPLATE_HEADERS.length; i++) {
                 Cell headerCell = headerRow.createCell(i);
-                headerCell.setCellValue(headers[i]);
+                headerCell.setCellValue(BULK_TEMPLATE_HEADERS[i]);
                 headerCell.setCellStyle(headerStyle);
-
-                sampleRow.createCell(i).setCellValue(sample[i]);
                 sheet.autoSizeColumn(i);
             }
 
@@ -418,31 +426,50 @@ public class DistributeEquipmentController implements Initializable {
                 "Reading distribution data from:\n" + selectedFile.getName()
         );
 
-        try (Workbook workbook = new XSSFWorkbook(new FileInputStream(selectedFile))) {
+        try (FileInputStream inputStream = new FileInputStream(selectedFile);
+             Workbook workbook = WorkbookFactory.create(inputStream)) {
             Sheet sheet = workbook.getSheetAt(0);
 
-            if (sheet.getRow(0) == null || sheet.getRow(0).getLastCellNum() < 4) {
+            Row headerRow = sheet.getRow(BULK_HEADER_ROW_INDEX);
+            if (headerRow == null) {
+                OperationFeedbackHelper.showError(
+                    "Invalid File",
+                    "The Excel file must contain the required header row."
+                );
+                return;
+            }
+
+            Map<String, Integer> columnIndex = readHeaderMap(headerRow);
+            if (!hasRequiredHeaders(columnIndex)) {
                 OperationFeedbackHelper.showError(
                         "Invalid File",
-                        "The Excel file must contain 4 columns: asset_code, assigned_to, phone, nid."
+                        "The Excel file must contain these columns: asset_code, assigned_to, phone, nid."
                 );
                 return;
             }
 
             List<Distribution> importedRows = new ArrayList<>();
+            List<String> countedRowDetails = new ArrayList<>();
 
-            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+            // Row 1 is always reserved for template headers; imported data starts on row 2.
+            for (int rowIndex = BULK_DATA_START_ROW_INDEX; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
                 if (row == null) {
                     continue;
                 }
 
-                String assetCode = getCellValue(row, 0);
-                String assignedTo = getCellValue(row, 1);
-                String phone = getCellValue(row, 2);
-                String nid = getCellValue(row, 3);
+                String assetCode = getCellValue(row, columnIndex.get("asset_code"));
+                String assignedTo = getCellValue(row, columnIndex.get("assigned_to"));
+                String phone = getCellValue(row, columnIndex.get("phone"));
+                String nid = getCellValue(row, columnIndex.get("nid"));
 
                 if (assetCode.isEmpty() && assignedTo.isEmpty() && phone.isEmpty() && nid.isEmpty()) {
+                    continue;
+                }
+                if (isHeaderLikeDataRow(assetCode, assignedTo, phone, nid)) {
+                    continue;
+                }
+                if (isSampleRow(assetCode, assignedTo, phone, nid)) {
                     continue;
                 }
 
@@ -463,6 +490,7 @@ public class DistributeEquipmentController implements Initializable {
                         nid,
                         LocalDate.now()
                 ));
+                countedRowDetails.add("Row " + (rowIndex + 1) + ": " + assetCode + " -> " + assignedTo);
             }
 
             if (importedRows.isEmpty()) {
@@ -473,11 +501,14 @@ public class DistributeEquipmentController implements Initializable {
                 return;
             }
 
-            if (requiredQty > 0 && importedRows.size() != requiredQty) {
+            int remainingQty = Math.max(0, requiredQty - existingDistributedQty);
+            if (requiredQty > 0 && importedRows.size() != remainingQty) {
                 OperationFeedbackHelper.showError(
                         "Quantity Mismatch",
-                        "This assignment needs exactly " + requiredQty +
-                                " distribution entries, but the file contains " + importedRows.size() + "."
+                        "This assignment needs exactly " + remainingQty +
+                                " distribution entries, but the file contains " + importedRows.size() + ".\n\n" +
+                                "Selected file: " + selectedFile.getName() + "\n" +
+                                "Counted rows:\n" + String.join("\n", countedRowDetails)
                 );
                 return;
             }
@@ -517,6 +548,57 @@ public class DistributeEquipmentController implements Initializable {
         return dataFormatter.formatCellValue(cell).trim();
     }
 
+    private Map<String, Integer> readHeaderMap(Row headerRow) {
+        Map<String, Integer> headerMap = new HashMap<>();
+        short lastCellNum = headerRow.getLastCellNum();
+        for (int cellIndex = 0; cellIndex < lastCellNum; cellIndex++) {
+            String header = getCellValue(headerRow, cellIndex).toLowerCase();
+            if (!header.isBlank()) {
+                headerMap.put(header, cellIndex);
+            }
+        }
+        return headerMap;
+    }
+
+    private boolean hasRequiredHeaders(Map<String, Integer> headerMap) {
+        for (String header : BULK_TEMPLATE_HEADERS) {
+            if (!headerMap.containsKey(header)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isHeaderLikeDataRow(String assetCode, String assignedTo, String phone, String nid) {
+        return BULK_TEMPLATE_HEADERS[0].equalsIgnoreCase(assetCode)
+                && BULK_TEMPLATE_HEADERS[1].equalsIgnoreCase(assignedTo)
+                && BULK_TEMPLATE_HEADERS[2].equalsIgnoreCase(phone)
+                && BULK_TEMPLATE_HEADERS[3].equalsIgnoreCase(nid);
+    }
+
+    private boolean isSampleRow(String assetCode, String assignedTo, String phone, String nid) {
+        return SAMPLE_ASSET_CODE.equalsIgnoreCase(assetCode)
+                && !assignedTo.isBlank()
+                && SAMPLE_PHONE.equalsIgnoreCase(phone)
+                && SAMPLE_NID.equalsIgnoreCase(nid);
+    }
+
+    private String buildAssignmentLabel(Assignment assignment, int distributed) {
+        return assignment.getPerson() + " (" + assignment.getEquipmentType() + ") - "
+                + getAssignmentStatus(distributed, assignment.getQuantity())
+                + " (" + distributed + "/" + assignment.getQuantity() + ")";
+    }
+
+    private String getAssignmentStatus(int distributed, int required) {
+        if (distributed <= 0) {
+            return "Not Enrolled";
+        }
+        if (distributed >= required) {
+            return "Enrolled";
+        }
+        return "Partially Enrolled";
+    }
+
     private void setAssignmentDependentState(boolean enabled) {
         if (manualEntryPane != null) {
             manualEntryPane.setDisable(!enabled);
@@ -536,6 +618,7 @@ public class DistributeEquipmentController implements Initializable {
             cmbAssignments.getSelectionModel().clearSelection();
             selectedAssignment = null;
             requiredQty = 0;
+            existingDistributedQty = 0;
             lblSelectedAssignment.setText("Selected: -");
             lblSelectedFile.setText("No file selected");
             distributionTable.setItems(currentDistributionData);
@@ -545,6 +628,7 @@ public class DistributeEquipmentController implements Initializable {
         }
 
         selectedAssignment = refreshedAssignment;
+        existingDistributedQty = DatabaseHandler.getDistributedCountForAssignment(selectedAssignment.getId());
         selectedFile = null;
         txtName.setText(selectedAssignment.getPerson());
         lblSelectedFile.setText("No file selected");
